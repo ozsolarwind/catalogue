@@ -38,6 +38,9 @@ catalogue_version
 # Editor backup
 *~
 
+#Archived files
+archive/
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
