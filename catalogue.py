@@ -554,7 +554,7 @@ class TabDialog(QtGui.QMainWindow):
         dialog = displayobject.AnObject(QtGui.QDialog(), addproperty, readonly=False,
                  textedit=True, title='Add Item', combolist=combolist, multi=self.category_multi)
         dialog.exec_()
-        if dialog.getValues()['Title'] == '':
+        if dialog.getValues() is None or dialog.getValues()['Title'] == '':
             cur.close()
             return
         folder = dialog.getValues()['Location']
@@ -576,7 +576,11 @@ class TabDialog(QtGui.QMainWindow):
                 continue
             if value == '':
                 continue
-            cur.execute(sql, (key, iid, value))
+            if isinstance(value, list):
+                for valu in value:
+                    cur.execute(sql, (key, iid, valu))
+            else:
+                cur.execute(sql, (key, iid, value))
         cur.execute("select count(*) from items")
         cnt = cur.fetchone()[0]
         if cnt > 0:
@@ -617,7 +621,7 @@ class TabDialog(QtGui.QMainWindow):
             search = '_%'
             where = "like ?"
         elif self.filter.currentText() == 'duplicate':
-            pass
+            where = "like ?"
         elif self.filter.currentText() == 'equals':
             where = "= ?"
         elif self.filter.currentText() == 'starts with':
@@ -643,9 +647,9 @@ class TabDialog(QtGui.QMainWindow):
                       ") > 1) i on o." + self.field + " = i." + self.field + " order by o." + self.field
                 cur.execute(sql)
             else:
-                sql = "select (item_id) from meta where value in (select value from meta where field = ? " + \
+                sql = "select (item_id) from meta where field = ? and value in (select value from meta where field = ? " + \
                       " group by value having count(*) > 1) order by value"
-                cur.execute(sql, (self.field, ))
+                cur.execute(sql, (self.field, self.field))
         elif self.field in ['Title', 'Filename', 'Location']:
             sql = "select (id) from items where " + self.field + " " + where + " order by " + self.field
             cur.execute(sql, (search, ))
@@ -712,7 +716,8 @@ class TabDialog(QtGui.QMainWindow):
                 else:
                     cur.execute(sql1, (self.rows[self.row + trw], self.field))
                 row = cur.fetchone()
-                self.table.setItem(trw, 1, QtGui.QTableWidgetItem(row[0]))
+                if row is not None:
+                    self.table.setItem(trw, 1, QtGui.QTableWidgetItem(row[0]))
         self.srchrng.setText(str(self.row + 1) + ' to ' + str(self.row + 1 + trw) + ' of ')
         cur.close()
 
