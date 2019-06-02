@@ -346,6 +346,7 @@ class AnObject(QtGui.QDialog):
         QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quitClicked)
 
     def quitClicked(self):
+        self.anobject = None
         self.close()
 
     def comboSelected(self):
