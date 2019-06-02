@@ -1,0 +1,362 @@
+#!/usr/bin/python3
+#
+#  Copyright (C) 2019 Angus King
+#
+#  displayobject.py - This file is part of catalogue.
+#
+#  catalogue is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as
+#  published by the Free Software Foundation, either version 3 of
+#  the License, or (at your option) any later version.
+#
+#  catalogue is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General
+#  Public License along with catalogue.  If not, see
+#  <http://www.gnu.org/licenses/>.
+#
+
+import os
+import sys
+from PyQt4 import QtCore
+from PyQt4 import QtGui
+
+from functions import *
+
+
+class GrowingTextEdit(QtGui.QPlainTextEdit):
+# From: https://stackoverflow.com/questions/11851020/a-qwidget-like-qtextedit-that-wraps-its-height-automatically-to-its-contents
+    def __init__(self, *args, **kwargs):
+        super(GrowingTextEdit, self).__init__(*args, **kwargs)
+        self.document().contentsChanged.connect(self.sizeChange)
+
+        self.heightMin = 0
+        self.heightMax = 65000
+
+    def sizeChange(self):
+        docHeight = self.document().size().height()
+    #    print('(27)', self.document().size().height(), self.document().size().width())
+        if self.heightMin <= docHeight <= self.heightMax:
+            self.setMinimumHeight(docHeight)
+
+
+class AnObject(QtGui.QDialog):
+    procStart = QtCore.pyqtSignal(str)
+
+    def resizeEvent(self, event):
+        print('(36) resize (%d x %d)' % (event.size().width(), event.size().height()))
+        QtGui.QWidget.resizeEvent(self, event)
+        w = event.size().width()
+        h = event.size().height()
+
+    def resize(self, w, h):
+    #    # Pass through to Qt to resize the widget.
+        QtGui.QWidget.resize( self, w, h )
+
+    def __init__(self, dialog, anobject, readonly=True, title=None, section=None,
+                 textedit=True, duplicate=None, combolist=None):
+        super(AnObject, self).__init__()
+        self.anobject = anobject
+        self.readonly = readonly
+        self.title = title
+        self.section = section
+        self.textedit = textedit
+        self.duplicate = duplicate
+        self.combolist = combolist
+        dialog.setObjectName('Dialog')
+        self.initUI()
+
+    def set_stuff(self, grid, widths, heights, i):
+        if widths[1] > 0:
+            grid.setColumnMinimumWidth(0, widths[0] + 10)
+            grid.setColumnMinimumWidth(1, widths[1] + 10)
+        i += 1
+        if isinstance(self.anobject, dict) and self.textedit:
+            self.message = QtGui.QLabel(str(heights))
+            msg_font = self.message.font()
+            msg_font.setBold(True)
+            self.message.setFont(msg_font)
+            msg_palette = QtGui.QPalette()
+            msg_palette.setColor(QtGui.QPalette.Foreground, QtCore.Qt.red)
+            self.message.setPalette(msg_palette)
+            grid.addWidget(self.message, i + 1, 1)
+            i += 1
+        if isinstance(self.anobject, str):
+            quit = QtGui.QPushButton('Close', self)
+        else:
+            quit = QtGui.QPushButton('Quit', self)
+        width = quit.fontMetrics().boundingRect('Close').width() + 10
+        quit.setMaximumWidth(width)
+        grid.addWidget(quit, i + 1, 0)
+        quit.clicked.connect(self.quitClicked)
+        if not self.readonly:
+            save = QtGui.QPushButton("Save", self)
+            save.setMaximumWidth(width)
+            grid.addWidget(save, i + 1, 1)
+            save.clicked.connect(self.saveClicked)
+        frame = QtGui.QFrame()
+        frame.setLayout(grid)
+        frame.setFrameShape(QtGui.QFrame.NoFrame)
+        scroll = QtGui.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(frame)
+        layout = QtGui.QVBoxLayout(self)
+        layout.addWidget(scroll)
+        self.setLayout(layout)
+        screen = QtGui.QDesktopWidget().availableGeometry()
+        h = heights * i * 2.5
+        w = widths[0] + widths[1] + 80
+        if w > screen.width():
+            w = int(screen.width() * .85)
+        if h > screen.height():
+            if sys.platform == 'win32' or sys.platform == 'cygwin':
+                pct = 0.85
+            else:
+                pct = 0.90
+            h = int(screen.height() * pct)
+        if w < 300:
+            w = 300
+        if h < 160:
+            h = 160
+        self.resize(w, h)
+        if self.title is not None:
+            self.setWindowTitle(self.title)
+        elif isinstance(self.anobject, str) or isinstance(self.anobject, dict):
+            self.setWindowTitle('?')
+        else:
+            self.setWindowTitle('Review ' + getattr(self.anobject, '__module__'))
+        self.setWindowIcon(QtGui.QIcon('books.png'))
+
+    def initUI(self):
+        label = []
+        self.edit = []
+        self.field_type = []
+        metrics = []
+        widths = [50, 50]
+        heights = 0
+        rows = 0
+        i = -1
+        grid = QtGui.QGridLayout()
+        if isinstance(self.anobject, str):
+            self.web = QtGui.QTextEdit()
+            if os.path.exists(self.anobject):
+                htf = open(self.anobject, 'r')
+                html = htf.read()
+                htf.close()
+                if self.anobject[-5:].lower() == '.html' or \
+                   self.anobject[-4:].lower() == '.htm' or \
+                   html[:5] == '<html':
+                    html = html.replace('[VERSION]', fileVersion())
+                    if self.section is not None:
+                        line = html.split('\n')
+                        html = ''
+                        for i in range(len(line)):
+                            html += line[i] + '\n'
+                            if line[i].strip() == '<body>':
+                               break
+                        for i in range(i, len(line)):
+                            if line[i][:2] == '<h':
+                                if line[i].find('id="' + self.section + '"') > 0:
+                                    break
+                        for i in range(i, len(line)):
+                            if line[i].find('Back to top<') > 0:
+                                break
+                            j = line[i].find(' (see <a href=')
+                            if j > 0:
+                                k = line[i].find('</a>)', j)
+                                line[i] = line[i][:j] + line[i][k + 5:]
+                            html += line[i] + '\n'
+                        for i in range(i, len(line)):
+                            if line[i].strip() == '</body>':
+                                break
+                        for i in range(i, len(line)):
+                            html += line[i] + '\n'
+                    self.web.setHtml(html)
+                else:
+                    self.web.setPlainText(html)
+            else:
+                html = self.anobject
+                if self.anobject[:5] == '<html':
+                    self.anobject = self.anobject.replace('[VERSION]', fileVersion())
+                    self.web.setHtml(self.anobject)
+                else:
+                    self.web.setPlainText(self.anobject)
+            metrics.append(self.web.fontMetrics())
+            try:
+                widths[0] = metrics[0].boundingRect(self.web.text()).width()
+                heights = metrics[0].boundingRect(self.web.text()).height()
+            except:
+                bits = html.split('\n')
+                for lin in bits:
+                    if len(lin) > widths[0]:
+                        widths[0] = len(lin)
+                heights = len(bits)
+                fnt = self.web.fontMetrics()
+                widths[0] = (widths[0]) * fnt.maxWidth()
+                heights = (heights) * fnt.height()
+                screen = QtGui.QDesktopWidget().availableGeometry()
+                if widths[0] > screen.width() * .67:
+                    heights = int(heights / .67)
+                    widths[0] = int(screen.width() * .67)
+            if self.readonly:
+                self.web.setReadOnly(True)
+            i = 1
+            grid.addWidget(self.web, 0, 0)
+            self.set_stuff(grid, widths, heights, i)
+        elif isinstance(self.anobject, dict):
+            if self.textedit: # probably only this for catalogue app
+                self.keys = []
+                metrics = [QtGui.QLabel('text').fontMetrics(), GrowingTextEdit('text').fontMetrics()]
+                rows = {}
+                for key, value in self.anobject.items():
+                    if value is None:
+                        value = ''
+                    widths[0] = max(widths[0], metrics[0].boundingRect(key).width())
+                    bits = value.split('\n')
+                    for lin in bits:
+                        widths[1] = max(widths[1], metrics[1].boundingRect(lin).width())
+                    if self.combolist is not None and key == self.combolist[0]:
+                        max_val = ''
+                        for val in self.combolist[1]:
+                            if (len(val) + 4) > len(max_val):
+                                max_val = val + 'xxxx'
+                        widths[1] = max(widths[1], metrics[1].boundingRect(max_val).width())
+                    rows[key] = [max(metrics[0].boundingRect(key).height(), metrics[1].boundingRect(value).height()), len(bits)]
+                    heights = max(heights, rows[key][0])
+                for key, value in self.anobject.items():
+                    if value is None:
+                        value = ''
+                    self.field_type.append('str')
+                    label.append(QtGui.QLabel(key + ':'))
+                    self.keys.append(key)
+                    if self.duplicate is not None and len(self.keys) == 1:
+                        self.edit.append(QtGui.QLineEdit())
+                        self.edit[-1].resize(widths[1], rows[key][0])
+                        self.edit[-1].setText(value)
+                    else:
+                        if self.combolist is not None and key == self.combolist[0]:
+                            label[-1] = QtGui.QLabel('<strong>' + key + ':</strong>')
+                            self.metacombo = QtGui.QComboBox(self)
+                            j = 0
+                            for val in self.combolist[1]:
+                                if value == val:
+                                    j = self.metacombo.count()
+                                self.metacombo.addItem(val)
+                            self.edit.append(self.metacombo)
+                            self.metacombo.setCurrentIndex(j)
+                        else:
+        #                    self.edit.append(QtGui.QTextEdit())
+                            self.edit.append(GrowingTextEdit())
+                            self.edit[-1].resize(widths[1], rows[key][0])
+                            self.edit[-1].setPlainText(value)
+                    if self.readonly:
+                        self.edit[-1].setReadOnly(True)
+                    i += 1
+                    grid.addWidget(label[-1], i + 1, 0)
+                    grid.addWidget(self.edit[-1], i + 1, 1)
+                    grid.setRowMinimumHeight(grid.rowCount() - 1, rows[key][0])
+                    grid.setRowStretch(grid.rowCount() - 1, rows[key][1])
+            else:
+                print('(226) Not been here before')
+                self.keys = []
+                for key, value in self.anobject.items():
+                    if value is None:
+                        value = ''
+                    self.field_type.append('str')
+                    label.append(QtGui.QLabel(key + ':'))
+                    self.keys.append(key)
+                    self.edit.append(QtGui.QLineEdit())
+                    self.edit[-1].setText(value)
+                    if i < 0:
+                        metrics.append(label[-1].fontMetrics())
+                        metrics.append(self.edit[-1].fontMetrics())
+                    chars = (len(value) + 5) * metrics[0].maxWidth()
+                    rows = metrics[0].height()
+                    self.edit[-1].resize(chars, rows)
+                    if metrics[0].boundingRect(label[-1].text()).width() > widths[0]:
+                        widths[0] = metrics[0].boundingRect(label[-1].text()).width()
+                    try:
+                        if metrics[1].boundingRect(self.edit[-1].text()).width() > widths[1]:
+                            widths[1] = metrics[1].boundingRect(self.edit[-1].text()).width()
+                    except:
+                        widths[1] = chars
+                    if self.readonly:
+                        self.edit[-1].setReadOnly(True)
+                    i += 1
+                    grid.addWidget(label[-1], i, 0)
+                    grid.addWidget(self.edit[-1], i, 1)
+            self.set_stuff(grid, widths, heights, i)
+        else:
+            print('(256) Not been here before')
+            for prop in dir(self.anobject):
+                if prop[:2] != '__' and prop[-2:] != '__':
+                    attr = getattr(self.anobject, prop)
+                    if isinstance(attr, int):
+                         self.field_type.append('int')
+                    elif isinstance(attr, float):
+                         self.field_type.append('float')
+                    else:
+                         self.field_type.append('str')
+                    label.append(QtGui.QLabel(prop.title() + ':'))
+                    if self.field_type[-1] != "str":
+                        self.edit.append(QtGui.QLineEdit(str(attr)))
+                    else:
+                        self.edit.append(QtGui.QLineEdit(attr))
+                    if i < 0:
+                        metrics.append(label[-1].fontMetrics())
+                        metrics.append(self.edit[-1].fontMetrics())
+                    if metrics[0].boundingRect(label[-1].text()).width() > widths[0]:
+                        widths[0] = metrics[0].boundingRect(label[-1].text()).width()
+                    if metrics[1].boundingRect(self.edit[-1].text()).width() > widths[1]:
+                        widths[1] = metrics[1].boundingRect(self.edit[-1].text()).width()
+                    for j in range(2):
+                        if metrics[j].boundingRect(label[-1].text()).height() > heights:
+                            heights = metrics[j].boundingRect(label[-1].text()).height()
+                    if self.readonly:
+                        self.edit[-1].setReadOnly(True)
+                    i += 1
+                    grid.addWidget(label[-1], i + 1, 0)
+                    grid.addWidget(self.edit[-1], i + 1, 1)
+            self.set_stuff(grid, widths, heights, i)
+        QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quitClicked)
+
+    def quitClicked(self):
+        self.close()
+
+    def saveClicked(self):
+        if isinstance(self.anobject, dict):
+            if self.textedit:
+                for i in range(len(self.keys)):
+                    if self.combolist is not None and self.keys[i] == self.combolist[0]:
+                        self.anobject[self.keys[i]] = self.metacombo.currentText()
+                    else:
+                        try:
+                            self.anobject[self.keys[i]] = str(self.edit[i].toPlainText())
+                        except:
+                            self.anobject[self.keys[i]] = str(self.edit[i].text())
+                if self.duplicate is not None:
+                    for dup in self.duplicate:
+                        if self.anobject[self.keys[0]] == dup:
+                            self.message.setText('Duplicate value not allowed for ' + self.keys[0])
+                            return
+            else:
+                for i in range(len(self.keys)):
+                    self.anobject[self.keys[i]] = str(self.edit[i].text())
+        else:
+            i = -1
+            for prop in dir(self.anobject):
+                if prop[:2] != '__' and prop[-2:] != '__':
+                    i += 1
+                    if self.field_type[i] == 'int':
+                        setattr(self.anobject, prop, int(self.edit[i].text()))
+                    elif self.field_type[i] == 'float':
+                        setattr(self.anobject, prop, float(self.edit[i].text()))
+                    else:
+                        setattr(self.anobject, prop, str(self.edit[i].text()))
+        self.close()
+
+    def getValues(self):
+        return self.anobject
