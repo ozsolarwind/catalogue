@@ -199,6 +199,7 @@ def create_catalogue(database, category='Category'):
             insert_field(conn, 'Info', 'Catalogue', database)
         insert_field(conn, 'Info', 'Description', 'Description for ' + database)
         insert_field(conn, 'Meta', 'Keyword', '')
+        insert_field(conn, 'Settings', 'Category Choice', 'Single')
         insert_field(conn, 'Settings', 'Category Field', category)
         insert_field(conn, 'Settings', 'Translate Userid', '$USER$')
         if sys.platform == 'win32' or sys.platform == 'cygwin':

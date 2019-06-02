@@ -419,6 +419,10 @@ class Table(QtGui.QDialog):
             duplicate = None
         dialog = displayobject.AnObject(QtGui.QDialog(), addproperty, readonly=False,
                  textedit=True, title='Add ' + self.fields[0].title() + ' value', duplicate=duplicate)
+        try:
+            dialog.edit[0].setFocus()
+        except:
+            pass
         dialog.exec_()
         if dialog.getValues()[self.fields[0]] != '':
             self.recur = True

@@ -60,7 +60,7 @@ class TabDialog(QtGui.QMainWindow):
         self.getRows()
 
     def resizeEvent(self, event):
-        print('(43) resize (%d x %d)' % (event.size().width(), event.size().height()))
+    #    print('(43) resize (%d x %d)' % (event.size().width(), event.size().height()))
         QtGui.QWidget.resizeEvent(self, event)
         w = event.size().width()
         h = event.size().height()
@@ -356,9 +356,13 @@ class TabDialog(QtGui.QMainWindow):
         self.pdf_decrypt = 'qpdf'
         self.launcher = ''
         self.translate_user = '$USER$'
+        self.category_multi = False
         cur.execute("select field, description from fields where typ = 'Settings'")
         row = cur.fetchone()
         while row is not None:
+            if row[0] == 'Category Choice':
+                if row[1][:5].lower() == 'multi':
+                    self.category_multi = True
             if row[0] == 'Category Field':
                 self.category = row[1].title()
             elif row[0] == 'Decrypt PDF':
@@ -548,7 +552,7 @@ class TabDialog(QtGui.QMainWindow):
             combolist[1].append(row[0])
             row = cur.fetchone()
         dialog = displayobject.AnObject(QtGui.QDialog(), addproperty, readonly=False,
-                 textedit=True, title='Add Item', combolist=combolist)
+                 textedit=True, title='Add Item', combolist=combolist, multi=self.category_multi)
         dialog.exec_()
         if dialog.getValues()['Title'] == '':
             cur.close()
@@ -593,6 +597,7 @@ class TabDialog(QtGui.QMainWindow):
                 self.catcombo.addItem(row[0])
                 row = cur.fetchone()
             cur.close()
+            self.filter.setCurrentIndex(0)
             self.search.setHidden(True)
             self.catcombo.setHidden(False)
         else:
@@ -601,6 +606,7 @@ class TabDialog(QtGui.QMainWindow):
 
     def catChanged(self):
         self.search.setText(self.catcombo.currentText())
+        self.do_search()
 
     def do_search(self):
         # think about like options - '%S', '%S%', '%S_S%' '[a-zA-Z0-9_]%'
@@ -610,7 +616,7 @@ class TabDialog(QtGui.QMainWindow):
         if self.filter.currentText() == 'missing' and self.field not in ['All', self.category, 'Title', 'Filename', 'Location']:
             search = '_%'
             where = "like ?"
-        elif self.filter.currentText() == 'duplicate' and self.field in ['Title', 'Filename']:
+        elif self.filter.currentText() == 'duplicate':
             pass
         elif self.filter.currentText() == 'equals':
             where = "= ?"
@@ -631,10 +637,15 @@ class TabDialog(QtGui.QMainWindow):
                   " ) order by title"
             cur.execute(sql, (search, search, search, search))
         elif self.filter.currentText() == 'duplicate':
-            sql = "select o.id from items o inner join (select " + self.field + \
-                  " from items group by " + self.field + " having count(" + self.field + \
-                  ") > 1) i on o." + self.field + " = i." + self.field + " order by o." + self.field
-            cur.execute(sql)
+            if self.field in ['Title', 'Filename']:
+                sql = "select o.id from items o inner join (select " + self.field + \
+                      " from items group by " + self.field + " having count(" + self.field + \
+                      ") > 1) i on o." + self.field + " = i." + self.field + " order by o." + self.field
+                cur.execute(sql)
+            else:
+                sql = "select (item_id) from meta where value in (select value from meta where field = ? " + \
+                      " group by value having count(*) > 1) order by value"
+                cur.execute(sql, (self.field, ))
         elif self.field in ['Title', 'Filename', 'Location']:
             sql = "select (id) from items where " + self.field + " " + where + " order by " + self.field
             cur.execute(sql, (search, ))
@@ -671,7 +682,7 @@ class TabDialog(QtGui.QMainWindow):
         self.table.setRowCount(self.pagerows.value())
         self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category])
         sql = "select title from items where id = ?"
-        sql1 = "select value from meta where item_id = ? and field = ?"
+        sql1 = "select value from meta where item_id = ? and field = ? order by value"
         sql2 = "select " + self.field + " from items where id = ?"
         cur = self.conn.cursor()
         for trw in range(self.pagerows.value()):
@@ -688,11 +699,13 @@ class TabDialog(QtGui.QMainWindow):
                 button.clicked.connect(partial(self._buttonItemClicked, trw))
             self.table.setItem(trw, 2, QtGui.QTableWidgetItem(row[0]))
             cur.execute(sql1, (self.rows[self.row + trw], self.category))
+            txt = ''
             row = cur.fetchone()
-            if row is not None:
-                self.table.setItem(trw, 3, QtGui.QTableWidgetItem(row[0]))
-            else:
-                self.table.setItem(trw, 3, QtGui.QTableWidgetItem(''))
+            while row is not None:
+                txt += ';' + row[0]
+                row = cur.fetchone()
+            txt = txt[1:]
+            self.table.setItem(trw, 3, QtGui.QTableWidgetItem(txt))
             if self.col_2:
                 if self.field in ['Filename', 'Location']:
                     cur.execute(sql2, (self.rows[self.row + trw], ))
@@ -733,6 +746,7 @@ class TabDialog(QtGui.QMainWindow):
             return
         if self.launcher == '':
             return
+        self.wrapmsg.setText('')
         sql = "select location, filename from items where id = ?"
         cur = self.conn.cursor()
         cur.execute(sql, (self.rows[self.row + row], ))
@@ -746,8 +760,11 @@ class TabDialog(QtGui.QMainWindow):
             fil = fil[7:]
         if os.path.exists(fil):
             os.system(self.launcher + ' "' + fil + '"')
+        else:
+            self.wrapmsg.setText(fil + ' not found.')
 
     def item_selected(self, row, col):
+        self.wrapmsg.setText('')
         if self.row + row >= len(self.rows):
             return
         fields = ['Title', 'Filename', 'Location']
@@ -758,11 +775,17 @@ class TabDialog(QtGui.QMainWindow):
         srow = cur.fetchone()
         for f in range(len(fields)):
             itmproperty[fields[f]] = srow[f]
-        sql = "select field, value from meta where item_id = ? order by field"
+        sql = "select field, value from meta where item_id = ? order by field, value"
         cur.execute(sql, (self.rows[self.row + row], ))
         srow = cur.fetchone()
         while srow is not None:
-            itmproperty[srow[0]] = srow[1]
+            if self.category_multi and srow[0] == self.category:
+                if srow[0] not in itmproperty.keys():
+                    itmproperty[srow[0]] = [srow[1]]
+                else:
+                    itmproperty[srow[0]].append(srow[1])
+            else:
+                itmproperty[srow[0]] = srow[1]
             srow = cur.fetchone()
         sql = "select field from fields where typ = 'Meta' order by field"
         cur.execute(sql)
@@ -779,14 +802,22 @@ class TabDialog(QtGui.QMainWindow):
             srow = cur.fetchone()
         cur.close()
         dialog = displayobject.AnObject(QtGui.QDialog(), itmproperty, readonly=False,
-                 textedit=True, title='Edit Item', combolist=combolist)
+                 textedit=True, title='Edit Item (' + str(self.rows[self.row + row]) + ')',
+                 combolist=combolist, multi=self.category_multi)
         dialog.exec_()
         if dialog.getValues() is None:
             return
         if dialog.getValues()['Title'] == '':
             return
         try:
-            self.table.setItem(row, 3, QtGui.QTableWidgetItem(dialog.getValues()[self.category]))
+            if isinstance(dialog.getValues()[self.category], list):
+                txt = ''
+                for valu in sorted(dialog.getValues()[self.category]):
+                    txt += ';' + valu
+                txt = txt[1:]
+                self.table.setItem(row, 3, QtGui.QTableWidgetItem(txt))
+            else:
+                self.table.setItem(row, 3, QtGui.QTableWidgetItem(dialog.getValues()[self.category]))
             self.table.setItem(row, 2, QtGui.QTableWidgetItem(dialog.getValues()['Title']))
             if self.field != '' and self.field not in fields:
                 self.table.setItem(row, 1, QtGui.QTableWidgetItem(dialog.getValues()[self.field]))
@@ -800,19 +831,26 @@ class TabDialog(QtGui.QMainWindow):
         sql = "update items set title = ?, filename = ?, location = ? where id = ?"
         cur.execute(sql, (dialog.getValues()['Title'],
                           dialog.getValues()['Filename'] , folder, self.rows[self.row + row]))
-        sql = "select id, field, value from meta where item_id = ?"
-        cur.execute(sql, (self.rows[self.row + row], ))
         sqlu = "update meta set value = ? where id = ?"
         sqld = "delete from meta where id = ?"
         sqli = "insert into meta (item_id, field, value) values (?, ?, ?)"
+        sql = "select id, field, value from meta where item_id = ?"
+        cur.execute(sql, (self.rows[self.row + row], ))
         srow = cur.fetchone()
         while srow is not None:
             if srow[1] in dialog.getValues().keys():
-                if dialog.getValues()[srow[1]].strip() == '':
-                    updcur.execute(sqld, (srow[0],))
-                elif srow[2] != dialog.getValues()[srow[1]].strip():
-                    updcur.execute(sqlu, (dialog.getValues()[srow[1]].strip(), srow[0]))
-                del dialog.getValues()[srow[1]]
+                if isinstance(dialog.getValues()[srow[1]], list):
+                    try:
+                        i = dialog.getValues()[srow[1]].index(srow[2])
+                        del dialog.getValues()[srow[1]][i]
+                    except:
+                        updcur.execute(sqld, (srow[0],))
+                else:
+                    if dialog.getValues()[srow[1]].strip() == '':
+                        updcur.execute(sqld, (srow[0],))
+                    elif srow[2] != dialog.getValues()[srow[1]].strip():
+                        updcur.execute(sqlu, (dialog.getValues()[srow[1]].strip(), srow[0]))
+                    del dialog.getValues()[srow[1]]
             else:
                 if dialog.getValues()[srow[1]].strip() != '':
                     updcur.execute(sqli, (self.rows[self.row + row], srow[1], dialog.getValues()[srow[1]].strip()))
@@ -821,9 +859,15 @@ class TabDialog(QtGui.QMainWindow):
         for key, value in dialog.getValues().items():
             if key in fields:
                 continue
-            if value.strip() == '':
-                continue
-            updcur.execute(sqli, (self.rows[self.row + row], key, value.strip()))
+            if isinstance(value, list):
+                for valu in value:
+                    if valu.strip() == '':
+                        continue
+                    updcur.execute(sqli, (self.rows[self.row + row], key, valu.strip()))
+            else:
+                if value.strip() == '':
+                    continue
+                updcur.execute(sqli, (self.rows[self.row + row], key, value.strip()))
         cur.close()
         updcur.close()
         self.conn.commit()
@@ -853,7 +897,8 @@ class TabDialog(QtGui.QMainWindow):
                 self.items.setText('')
             cur.close()
             self.conn.commit()
-            self.table.removeRow(row)
+        #    self.table.removeRow(row)
+            self.do_search()
 
     def showAbout(self):
         about = 'A simple catalogue for documents, books, whatever...'

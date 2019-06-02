@@ -118,17 +118,39 @@ ul {
 <p>A simple catalogue implementation.</p>
 <h2 id="overview">Overview</h2>
 <p>This application is a prototype of a catalogue for holding information about &ldquo;things&rdquo;. It attempts to be as unspecific as possible to improve its usefulness.</p>
-<p>The program uses catalogues which are stored in sqlite3 databases. sqlite3 databases are single files and require no additional programs or packages. By default each item has four attributes (fields):
+<p>The program uses catalogues which are stored in sqlite3 databases. sqlite3 databases are single files and require no additional programs or packages. By default each item has three attributes (fields):
 <ul>
-<li>Category - the category (subject) the item is related to</li>
 <li>Title - the title for the item</li>
 <li>Location - location for the item. If the item is a computer file this is the folder (directory) the file resides in</li>
 <li>Filename - if the item is a computer file this is the name of the file</li>
 </ul>
-Additional attributes can be defined using Meta attributes (see below).</p>
+In addition, the item can be assigned to one or more categories via use of a category field and additional attributes can be defined using Meta attributes (see <strong>Creating a new catalogue</strong> below).</p>
 <h2 id="install">Installation and Execution</h2>
 <p>There <del>is</del> will be a packaged version for Windows available as a self-extracting zip file from <a href="https://sourceforge.net/projects/catalogue/" target="_blank">https://sourceforge.net/projects/catalogue/</a> (the package has been created with PyInstaller). To install the package you can just open/launch it and extract it to your desired location. It may be necessary to execute the program as Administrator.</p>
 <p>To execute the program open catalogue.exe in the catalogue folder. You can easily set up a Desktop shortcut to point to the program.</p>
+<h3>Creating a new Catalogue</h3>
+<p>You can create a new catalogue by choosing the <strong>Catalogue &rarr; New</strong> menu option. As part of the creation process there are a number of settings and options to adjust the catalogue to suite your needs. These are described briefly in <strong>Menu options</strong> and include:
+<ul>
+<li>You can define a category attribute (field) for the catalogue to group items into a number of categories. These are the actions you need to do:
+<p>
+<ul>
+<li><strong>Attributes &rarr; Settings</strong> Update these settings to define the category field:
+<ul>
+<li>Category Field - Choose the name of the category field for the catalogue. For example, for a music catalogue you might call the category field <em>Genre</em></li>
+<li>Category Choice - You can choose to allow multiple Category values for an item by setting this value to <em>multi</em>. The default is a single value</li>
+</ul>
+</p>
+<li><strong>Attribues &rarr; Category</strong> (the menu item will display the name of the Category field) Update the list of categories available. When adding or editing an item you will either be presented with a pulldown list if a single Category value is allowed or you click on the Category field to select multiple category values. For multiple categories pressing Ctrl+left mouse button allows you to select a set of individual values while Shift+left mouse button allows you to select a group of values</li>
+</ul>
+</p>
+<li>You can define any number of additional attributes for each item by defining additional <em>Meta</em> fields.
+<p>
+<ul>
+<li><strong>Attribues &rarr; Meta</strong> Update the list of attributes (fields) available. When adding or editing an item you will be presented with a window containing all attributes to be updated</li>
+</ul>
+</p>
+<li>You can load a spreadsheet or CSV file into the catalogue by choosing <strong>Catalogue &rarr; Load</strong>. The load process will create attributes (fields) identified by the spreadsheet column names. If you're lading the data into a new catalogue you can use one of the spreadsheet column names to define the category attribute</li>
+</ul>
 <h3>Main Window</h3>
 <p>The application has a main window, as described below.</p>
 <p>
@@ -190,6 +212,7 @@ Additional attributes can be defined using Meta attributes (see below).</p>
 <td class="none"><img src="edit.png" alt="Settings">&nbsp;&nbsp;Settings</td>
 <td class="none">There are a small number of Settings for the catalogue, some of which control some aspects for computer files and folders.
 <ul>
+<li>Category Choice - You can choose to allow multiple Category values for an item by setting this value to <em>multi</em>. The default is a single value</li>
 <li>Category Field - the name of the category field for the catalogue</li>
 <li>Decrypt PDF - the name of a program to decrypt simple encrypted PDFs when they're added to the catalogue. This currently only works for Linux and the qpdf command/program</li>
 <li>Launch File - if set this is the command that will be issued to open a computer file. The value for Windows is <code>start &ldquo;&rdquo;</code> and for Linux <code>/usr/bin/xdg-open/</code>. To hide the launch column you need to set this to empty or delete the entry</li>
@@ -239,7 +262,7 @@ Additional attributes can be defined using Meta attributes (see below).</p>
 <li>Add File - add a new item from a file. You choose the file and will then be presented with the Add window. If the file is a PDF file, the program will attempt to populate some values from the file properties</li>
 </ul>
 <h3>List of items</h3>
-<p>The items satisfying the search criteria are displayed as a list one &ldquo;page&rdquo; at a time. The number of items displayed in a page can be adjusted by the Rows per page at the top of the list. You can navigate the list via either the scroll-bar on the mouse or using Page-Up or Page-Down. The list will display the Title and the Category for each item. If appropiate the list will also display the <span style="color:red;">Search by attribute</span>. If there is a value for the <span style="color:red;">Launch button</span> a button will be displayed for each item. Pressing the button will launch the application for the chosen item. To delete and item you right click on the number to the left of the item in the list.</p>
+<p>The items satisfying the search criteria are displayed as a list one &ldquo;page&rdquo; at a time. The number of items displayed in a page can be adjusted by the Rows per page at the top of the list. You can navigate the list via either the scroll-bar on the mouse or using Page-Up or Page-Down. The list will display the Title and the Category for each item. If appropiate the list will also display the <span style="color:red;">Search by attribute</span>. If there is a value for the <span style="color:red;">Launch button</span> a button will be displayed for each item. Pressing the button will launch the application for the chosen item. To delete an item you right click on the number to the left of the item in the list.</p>
 <p>
 <img src="cat2.png" alt="Main window">
 </p>

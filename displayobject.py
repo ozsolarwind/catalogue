@@ -21,8 +21,7 @@
 
 import os
 import sys
-from PyQt4 import QtCore
-from PyQt4 import QtGui
+from PyQt4 import Qt, QtCore, QtGui
 
 from functions import *
 
@@ -47,7 +46,7 @@ class AnObject(QtGui.QDialog):
     procStart = QtCore.pyqtSignal(str)
 
     def resizeEvent(self, event):
-        print('(36) resize (%d x %d)' % (event.size().width(), event.size().height()))
+   #     print('(36) resize (%d x %d)' % (event.size().width(), event.size().height()))
         QtGui.QWidget.resizeEvent(self, event)
         w = event.size().width()
         h = event.size().height()
@@ -57,7 +56,7 @@ class AnObject(QtGui.QDialog):
         QtGui.QWidget.resize( self, w, h )
 
     def __init__(self, dialog, anobject, readonly=True, title=None, section=None,
-                 textedit=True, duplicate=None, combolist=None):
+                 textedit=True, duplicate=None, combolist=None, multi=False):
         super(AnObject, self).__init__()
         self.anobject = anobject
         self.readonly = readonly
@@ -66,6 +65,7 @@ class AnObject(QtGui.QDialog):
         self.textedit = textedit
         self.duplicate = duplicate
         self.combolist = combolist
+        self.multi = multi
         dialog.setObjectName('Dialog')
         self.initUI()
 
@@ -75,7 +75,7 @@ class AnObject(QtGui.QDialog):
             grid.setColumnMinimumWidth(1, widths[1] + 10)
         i += 1
         if isinstance(self.anobject, dict) and self.textedit:
-            self.message = QtGui.QLabel(str(heights))
+            self.message = QtGui.QLabel('') #str(heights))
             msg_font = self.message.font()
             msg_font.setBold(True)
             self.message.setFont(msg_font)
@@ -147,9 +147,12 @@ class AnObject(QtGui.QDialog):
                 html = htf.read()
                 htf.close()
                 if self.anobject[-5:].lower() == '.html' or \
-                   self.anobject[-4:].lower() == '.htm' or \
-                   html[:5] == '<html':
-                    html = html.replace('[VERSION]', fileVersion())
+                    self.anobject[-4:].lower() == '.htm' or \
+                    html[:5] == '<html':
+                    try:
+                        html = html.replace('[VERSION]', fileVersion())
+                    except:
+                        pass
                     if self.section is not None:
                         line = html.split('\n')
                         html = ''
@@ -215,17 +218,21 @@ class AnObject(QtGui.QDialog):
                     if value is None:
                         value = ''
                     widths[0] = max(widths[0], metrics[0].boundingRect(key).width())
-                    bits = value.split('\n')
-                    for lin in bits:
-                        widths[1] = max(widths[1], metrics[1].boundingRect(lin).width())
-                    if self.combolist is not None and key == self.combolist[0]:
-                        max_val = ''
-                        for val in self.combolist[1]:
-                            if (len(val) + 4) > len(max_val):
-                                max_val = val + 'xxxx'
-                        widths[1] = max(widths[1], metrics[1].boundingRect(max_val).width())
-                    rows[key] = [max(metrics[0].boundingRect(key).height(), metrics[1].boundingRect(value).height()), len(bits)]
-                    heights = max(heights, rows[key][0])
+                    try:
+                        bits = value.split('\n')
+                        for lin in bits:
+                            widths[1] = max(widths[1], metrics[1].boundingRect(lin).width())
+                        if self.combolist is not None and key == self.combolist[0]:
+                            max_val = ''
+                            for val in self.combolist[1]:
+                                if (len(val) + 4) > len(max_val):
+                                    max_val = val + 'xxxx'
+                            widths[1] = max(widths[1], metrics[1].boundingRect(max_val).width())
+                        rows[key] = [max(metrics[0].boundingRect(key).height(), metrics[1].boundingRect(value).height()),
+                                     len(bits)]
+                        heights = max(heights, rows[key][0])
+                    except:
+                        rows[key] = [metrics[0].boundingRect(key).height(), 1]
                 for key, value in self.anobject.items():
                     if value is None:
                         value = ''
@@ -239,14 +246,28 @@ class AnObject(QtGui.QDialog):
                     else:
                         if self.combolist is not None and key == self.combolist[0]:
                             label[-1] = QtGui.QLabel('<strong>' + key + ':</strong>')
-                            self.metacombo = QtGui.QComboBox(self)
-                            j = 0
-                            for val in self.combolist[1]:
-                                if value == val:
-                                    j = self.metacombo.count()
-                                self.metacombo.addItem(val)
-                            self.edit.append(self.metacombo)
-                            self.metacombo.setCurrentIndex(j)
+                            if self.multi:
+                                self.metacombo = ClickableQLabel()
+                                frameStyle = QtGui.QFrame.Sunken | QtGui.QFrame.Panel
+                                self.metacombo.setFrameStyle(frameStyle)
+                                self.metacombo.setStyleSheet("background-color:#ffffff;")
+                                self.chosen = value
+                                txt = ''
+                                for valu in value:
+                                    txt += ';' + valu
+                                txt = txt[1:]
+                                self.metacombo.setText(txt)
+                                self.connect(self.metacombo, QtCore.SIGNAL('clicked()'), self.comboSelected)
+                                self.edit.append(self.metacombo)
+                            else:
+                                self.metacombo = QtGui.QComboBox(self)
+                                j = 0
+                                for val in self.combolist[1]:
+                                    if value == val:
+                                        j = self.metacombo.count()
+                                    self.metacombo.addItem(val)
+                                self.edit.append(self.metacombo)
+                                self.metacombo.setCurrentIndex(j)
                         else:
         #                    self.edit.append(QtGui.QTextEdit())
                             self.edit.append(GrowingTextEdit())
@@ -259,6 +280,7 @@ class AnObject(QtGui.QDialog):
                     grid.addWidget(self.edit[-1], i + 1, 1)
                     grid.setRowMinimumHeight(grid.rowCount() - 1, rows[key][0])
                     grid.setRowStretch(grid.rowCount() - 1, rows[key][1])
+                self.edit[0].setFocusPolicy(QtCore.Qt.StrongFocus)
             else:
                 print('(226) Not been here before')
                 self.keys = []
@@ -326,12 +348,38 @@ class AnObject(QtGui.QDialog):
     def quitClicked(self):
         self.close()
 
+    def comboSelected(self):
+        chosen = selectMulti(self.combolist[1], self.chosen, self.combolist[0])
+     #   chosen.setWindowModality(QtCore.Qt.WindowModal)
+        chosen.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+    #    chosen.activateWindow()
+   #     self.setWindowFlags(QtCore.Qt.WindowStaysOnBottomHint)
+        chosen.exec_()
+    #    self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        selected = chosen.getValues()
+        del chosen
+        if selected is None:
+            return
+        if len(selected) == 0:
+            txt = '?'
+            self.chosen = [txt]
+        else:
+            self.chosen = selected
+            txt = ''
+            for valu in self.chosen:
+                txt += ';' + valu
+            txt = txt[1:]
+        self.metacombo.setText(txt)
+
     def saveClicked(self):
         if isinstance(self.anobject, dict):
             if self.textedit:
                 for i in range(len(self.keys)):
                     if self.combolist is not None and self.keys[i] == self.combolist[0]:
-                        self.anobject[self.keys[i]] = self.metacombo.currentText()
+                        if self.multi:
+                            self.anobject[self.keys[i]] = self.chosen
+                        else:
+                            self.anobject[self.keys[i]] = self.metacombo.currentText()
                     else:
                         try:
                             self.anobject[self.keys[i]] = str(self.edit[i].toPlainText())
@@ -360,3 +408,104 @@ class AnObject(QtGui.QDialog):
 
     def getValues(self):
         return self.anobject
+
+
+class ClickableQLabel(QtGui.QLabel):
+    def __init(self, parent):
+        QLabel.__init__(self, parent)
+
+    def mousePressEvent(self, event):
+        QtGui.QApplication.widgetAt(event.globalPos()).setFocus()
+        self.emit(QtCore.SIGNAL('clicked()'))
+
+
+class selectMulti(QtGui.QDialog):
+    def __init__(self, combos, chosen, multi):
+        super(selectMulti, self).__init__()
+        self.combos = combos
+        self.chosen = chosen
+        self.grid = QtGui.QGridLayout()
+#       use this if you want a checkbox
+#        j = 0
+#        self.checkbox = []
+#        self.checkbox.append(QtGui.QCheckBox('Check / Uncheck all', self))
+#        self.grid.addWidget(self.checkbox[-1], 0, 0)
+#        i = 0
+#        c = 0
+#        for combo in sorted(self.combos):
+#            self.checkbox.append(QtGui.QCheckBox(combo, self))
+#            if combo in chosen:
+#                self.checkbox[-1].setCheckState(QtCore.Qt.Checked)
+#            i += 1
+#            self.grid.addWidget(self.checkbox[-1], i, c)
+#            if i > 25:
+#                i = 0
+#                c += 1
+#        self.grid.connect(self.checkbox[0], QtCore.SIGNAL('stateChanged(int)'), self.check_all)
+#        selectc = QtGui.QPushButton('Select', self)
+#        selectc.clicked.connect(self.selectcClicked)
+#        self.grid.addWidget(select, i + 1, c)
+        self.multiListBox = QtGui.QListWidget()
+        self.multiListBox.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        i = 0
+        for combo in sorted(self.combos):
+            self.multiListBox.addItem(combo)
+            if combo in chosen:
+                self.multiListBox.setItemSelected(self.multiListBox.item(i), True)
+            i += 1
+        j = int((self.multiListBox.fontMetrics().height() + 2.5) * i - self.multiListBox.sizeHint().height())
+        self.multiListBox.resize(self.multiListBox.sizeHint().width(), self.multiListBox.fontMetrics().height() * i)
+        self.grid.addWidget(self.multiListBox, 0, 0)
+        selectl = QtGui.QPushButton('Select', self)
+        selectl.clicked.connect(self.selectlClicked)
+        self.grid.addWidget(selectl, 1, 0)
+        self.setLayout(self.grid)
+        if j > 0:
+            h1 = QtGui.QDesktopWidget().availableGeometry().height() * 0.85
+            h = self.sizeHint().height() + j
+            if h > h1:
+                h = h1
+            self.resize(self.sizeHint().width(), h)
+        self.setWindowTitle('Choose ' + multi + ' values')
+        QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quitClicked)
+    #    self.setWindowState(self.windowState() & QtCore.Qt.WindowActive)
+        self.activateWindow()
+    #    self.setWindowFlags(Qt.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        self.show_them = False
+        self.show()
+
+    def check_all(self):
+        if self.checkbox[0].isChecked():
+            for i in range(len(self.checkbox)):
+                self.checkbox[i].setCheckState(QtCore.Qt.Checked)
+        else:
+            for i in range(len(self.checkbox)):
+                self.checkbox[i].setCheckState(QtCore.Qt.Unchecked)
+
+    def closeEvent(self, event):
+        if not self.show_them:
+            self.chosen = None
+        event.accept()
+
+    def quitClicked(self):
+        self.close()
+
+#    def selectcClicked(self):
+#        self.chosen = []
+#        for combo in range(1, len(self.checkbox)):
+#            if self.checkbox[combo].checkState() == QtCore.Qt.Checked:
+#                self.chosen.append(str(self.checkbox[combo].text()))
+#        self.show_them = True
+#        self.close()
+
+    def selectlClicked(self):
+        chosen = []
+        for item in self.multiListBox.selectedItems():
+            chosen.append(item.text())
+        self.chosen = sorted(chosen)
+        self.show_them = True
+        self.close()
+
+    def getValues(self):
+        return self.chosen
