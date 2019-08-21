@@ -578,9 +578,9 @@ class TabDialog(QtGui.QMainWindow):
         folder = dialog.getValues()['Location']
         if self.translate_user != '':
             folder = folder.replace(getUser(), self.translate_user)
+        titl = dialog.getValues()['Title'].replace('\n', ' ').replace('\r', '')
         sql = "insert into items (Title, Filename, Location) values (?, ?, ?)"
-        cur.execute(sql, (dialog.getValues()['Title'],
-                          dialog.getValues()['Filename'] , folder))
+        cur.execute(sql, (titl, dialog.getValues()['Filename'] , folder))
         sql = "select last_insert_rowid()"
    #     " + self.category + ",
         cur.execute(sql)
@@ -593,7 +593,10 @@ class TabDialog(QtGui.QMainWindow):
             if key in fields:
                 continue
             if value == '':
-                continue
+                if key == 'Acquired':
+                    value = datetime.now().strftime('%Y-%m-%d')
+                else:
+                    continue
             if isinstance(value, list):
                 for valu in value:
                     cur.execute(sql, (key, iid, valu))
@@ -635,10 +638,19 @@ class TabDialog(QtGui.QMainWindow):
         self.field = self.metacombo.currentText()
         self.rows = []
         search = self.search.text()
-        if self.filter.currentText() == 'missing' and self.field not in ['All', self.category, 'Title', 'Filename', 'Location']:
-            search = '_%'
-            where = "like ?"
+        self.find_file = False
+        if self.filter.currentText() == 'missing' and self.field == 'Filename':
+            where = "<> ''"
+            self.find_file = True
+        elif self.filter.currentText() == 'missing' and self.field not in ['All', 'Title', 'Location']:
+            if self.field == self.category:
+                pass
+            else:
+                search = '_%'
+                where = "like ?"
         elif self.filter.currentText() == 'duplicate':
+            if search != '':
+                search = search + '%'
             where = "like ?"
         elif self.filter.currentText() == 'equals':
             where = "= ?"
@@ -659,18 +671,38 @@ class TabDialog(QtGui.QMainWindow):
                   " ) order by title"
             cur.execute(sql, (search, search, search, search))
         elif self.filter.currentText() == 'duplicate':
-            if self.field in ['Title', 'Filename']:
-                sql = "select o.id from items o inner join (select " + self.field + \
-                      " from items group by " + self.field + " having count(" + self.field + \
-                      ") > 1) i on o." + self.field + " = i." + self.field + " order by o." + self.field
-                cur.execute(sql)
+            if self.field in ['Title', 'Filename', 'Location']:
+                if search != '':
+                    sql = "select o.id from items o inner join (select " + self.field + \
+                      " from items where " + self.field + " " + where + " group by " + \
+                      self.field + " having count(" + self.field + ") > 1) i on o." + \
+                      self.field + " = i." + self.field + " order by o." + self.field
+                    print(sql, search)
+                    cur.execute(sql, (search, ))
+                else:
+                    sql = "select o.id from items o inner join (select " + self.field + \
+                          " from items group by " + self.field + " having count(" + self.field + \
+                          ") > 1) i on o." + self.field + " = i." + self.field + " order by o." + self.field
+                    cur.execute(sql)
             else:
-                sql = "select (item_id) from meta where field = ? and value in (select value from meta where field = ? " + \
-                      " group by value having count(*) > 1) order by value"
-                cur.execute(sql, (self.field, self.field))
+                if search != '':
+                    sql = "select (item_id) from meta where field = ? and value in (select value from meta where field = ? " + \
+                          " and value " + where + " group by value having count(*) > 1) order by value"
+                    print(self.field, search, sql)
+                    cur.execute(sql, (self.field, self.field, search))
+                else:
+                    sql = "select (item_id) from meta where field = ? and value in (select value from meta where field = ? " + \
+                          " group by value having count(*) > 1) order by value"
+                    cur.execute(sql, (self.field, self.field))
+        elif self.filter.currentText() == 'missing' and self.field == 'Filename':
+            sql = "select id, location, filename from items where " + self.field + " " + where + " order by " + self.field
+            cur.execute(sql)
         elif self.field in ['Title', 'Filename', 'Location']:
             sql = "select (id) from items where " + self.field + " " + where + " order by " + self.field
             cur.execute(sql, (search, ))
+        elif self.filter.currentText() == 'missing' and self.field == self.category:
+            sql = "select (id) from items where id not in (select item_id from meta where field = ?)"
+            cur.execute(sql, (self.field, ))
         else:
             sql = "select (item_id) from meta where field = ? and value " + where + \
                   " order by value"
@@ -678,10 +710,23 @@ class TabDialog(QtGui.QMainWindow):
                 sql = "select (id) from items where id not in (" + sql + ") order by title"
             cur.execute(sql, (self.field, search))
         row = cur.fetchone()
-        while row is not None:
-            if row[0] not in self.rows:
-                self.rows.append(row[0])
-            row = cur.fetchone()
+        if self.find_file:
+            while row is not None:
+                if self.translate_user != '':
+                    folder = row[1].replace(self.translate_user, getUser())
+                else:
+                    folder = row[1]
+                if folder[:7] == 'file://':
+                    folder = folder[7:]
+                if not os.path.exists(folder + row[2]):
+                    if row[0] not in self.rows:
+                        self.rows.append(row[0])
+                row = cur.fetchone()
+        else:
+            while row is not None:
+                if row[0] not in self.rows:
+                    self.rows.append(row[0])
+                row = cur.fetchone()
         cur.close()
         self.srchmsg.setText(str(len(self.rows)) + ' items')
         self.srchrng.setText('')
@@ -703,7 +748,7 @@ class TabDialog(QtGui.QMainWindow):
         self.table.clear()
         self.table.setRowCount(self.pagerows.value())
         self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category])
-        sql = "select title from items where id = ?"
+        sql = "select title, filename from items where id = ?"
         sql1 = "select value from meta where item_id = ? and field = ? order by value"
         sql2 = "select " + self.field + " from items where id = ?"
         cur = self.conn.cursor()
@@ -792,14 +837,15 @@ class TabDialog(QtGui.QMainWindow):
                     if item[0] != '':
                         webbrowser.open_new(item[0])
             return
-        fil = item[0] + item[1]
-        fil = fil.replace(self.translate_user, getUser())
-        if fil[:7] == 'file://':
-            fil = fil[7:]
-        if os.path.exists(fil):
-            os.system(self.launcher + ' "' + fil + '"')
+        folder = item[0].replace(self.translate_user, getUser())
+        if folder[:7] == 'file://':
+            folder = folder[7:]
+        if os.path.exists(folder + item[1]):
+            os.system(self.launcher + ' "' + folder + item[1] + '"')
+        elif self.find_file:
+            self.findFolder(self.rows[self.row + row], folder, item[1])
         else:
-            self.wrapmsg.setText(fil + ' not found.')
+            self.wrapmsg.setText(folder + item[1] + ' not found.')
 
     def item_selected(self, row, col):
         self.wrapmsg.setText('')
@@ -867,8 +913,8 @@ class TabDialog(QtGui.QMainWindow):
         if self.translate_user != '':
             folder = folder.replace(getUser(), self.translate_user)
         sql = "update items set title = ?, filename = ?, location = ? where id = ?"
-        cur.execute(sql, (dialog.getValues()['Title'],
-                          dialog.getValues()['Filename'] , folder, self.rows[self.row + row]))
+        titl = dialog.getValues()['Title'].replace('\n', ' ').replace('\r', '')
+        cur.execute(sql, (titl, dialog.getValues()['Filename'] , folder, self.rows[self.row + row]))
         sqlu = "update meta set value = ? where id = ?"
         sqld = "delete from meta where id = ?"
         sqli = "insert into meta (item_id, field, value) values (?, ?, ?)"
@@ -960,6 +1006,53 @@ class TabDialog(QtGui.QMainWindow):
                 self.dbs.insert(0, self.dbs.pop(self.dbs.index(self.db)))
             configFile(data=self.dbs)
         event.accept()
+
+    def findFolder(self, itemid, folder, filename):
+        folder = QtGui.QFileDialog.getExistingDirectory(None,
+                 'Folder to start searching for ' + filename, folder,
+                 QtGui.QFileDialog.ShowDirsOnly)
+        if folder != '':
+            possibles = []
+            folders = [f[0] for f in os.walk(folder)]
+            for fldr in folders:
+                if os.path.exists(fldr + '/' + filename):
+                    possibles.append(fldr)
+            del folders
+            if len(possibles) == 0:
+                self.wrapmsg.setText(filename + ' not found')
+                return
+            if len(possibles) == 1:
+                folder = possibles[0] + '/'
+                print(folder)
+                if self.translate_user != '':
+                    folder = folder.replace(getUser(), self.translate_user)
+                sql = "update items set location = ? where id = ?"
+                updcur = self.conn.cursor()
+                updcur.execute(sql, (folder , itemid))
+                updcur.close()
+                self.conn.commit()
+                os.system(self.launcher + ' "' + possibles[0] + '/' + filename + '"')
+                self.wrapmsg.setText(filename + ' found at ' + folder)
+                return
+            for f in range(len(possibles)):
+                stat = os.stat(possibles[f] + '/' + filename)
+                possibles[f] = [possibles[f], stat.st_size]
+            fields = ['Location', 'Size']
+            dialog = displaytable.Table(possibles, fields=fields)
+            dialog.exec_()
+            folder = dialog.getChoice()
+            if folder is not None:
+                sql = "update items set location = ? where id = ?"
+                updcur = self.conn.cursor()
+                if self.translate_user != '':
+                    fldr = folder.replace(getUser(), self.translate_user)
+                updcur.execute(sql, (fldr + '/', itemid))
+                updcur.close()
+                self.conn.commit()
+                os.system(self.launcher + ' "' + folder + '/' + filename + '"')
+                self.wrapmsg.setText(filename + ' found at ' + folder + '/')
+                return
+
 
 class ClickableQLabel(QtGui.QLabel):
     def __init(self, parent):

@@ -249,11 +249,12 @@ ul {
 <li>starts with - chosen attribute values start with the search criteria</li>
 <li>contains - the chosen attribute contains the search criteria</li>
 <li>missing - select items with missing values for the chosen attribute</li>
-<li>duplicate - select items that have duplicate values for either Filename or Title</li>
+<li>duplicate - select items that have duplicate values. If you specify a search value duplicates must start with this value</li>
 </ul>
-<li>The third field allows you to specify a search value. If the search filter is starts with and the search value is empty all items with the chosen attribute will be chosen</li>
+<li>The third field allows you to specify a search value. If the search filter is 'starts with' and the search value is empty all items with the chosen attribute will be chosen. If you're searching for duplicate values (for example, locations) you can precede the search value with a '%' to find the search value anywhere</li>
 <li>Pressing the Search button will initiate the search. Often pressing Enter will also initiate the search</li>
 <li>Below the search fields there are details on how many items satisfy the search and which items are being displayed in the list</li>
+<li>If you're searching for missing Filenames you'll be presented with a list of items not found in the item's Location (folder). You can attempt to find the location for the file by doing a search of folders. If you click on the Launch button for the item you'll be presented with a menu to set the starting folder to search. The program will search all folders below that to find the missing file. If there is a single copy of the file, the program will update the Location for the item and launch the item. If there is more than one copy of the file you will be presented with a list of locations plus the size of each file enabling you to choose the correct copy</li>
 </ul>
 <h3 style="color:red;">Buttons</h3>
 <p>There are three buttons:
