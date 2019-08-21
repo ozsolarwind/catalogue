@@ -32,6 +32,7 @@ from sqlite3 import Error
 import sys
 import tempfile
 import time
+import webbrowser
 
 import displayobject
 import displaytable
@@ -67,6 +68,7 @@ class TabDialog(QtGui.QMainWindow):
 
     def __init__(self, parent=None):
         QtGui.QMainWindow.__init__(self, parent)
+        self.find_file = False
         self.conn = None
         self.db = None
         self.dbs = configFile()
@@ -77,7 +79,7 @@ class TabDialog(QtGui.QMainWindow):
         self.catcombo = QtGui.QComboBox(self)
         self.catcombo.setHidden(True)
         self.attr_cat = QtGui.QAction(QtGui.QIcon('copy.png'), self.category, self)
-        self.attr_cat.setShortcut('Ctrl+S')
+        self.attr_cat.setShortcut('Ctrl+C')
         self.attr_cat.setStatusTip('Edit category values')
         self.attr_cat.triggered.connect(self.editFields)
         if len(self.dbs) > 0:
@@ -157,7 +159,7 @@ class TabDialog(QtGui.QMainWindow):
         db_opn.setStatusTip('Open Catalogue')
         db_opn.triggered.connect(self.openDB)
         db_add = QtGui.QAction(QtGui.QIcon('plus.png'), 'Add', self)
-        db_add.setShortcut('Ctrl+N')
+        db_add.setShortcut('Ctrl+A')
         db_add.setStatusTip('Add Catalogue')
         db_add.triggered.connect(self.addDB)
         db_new = QtGui.QAction(QtGui.QIcon('books.png'), 'New', self)
@@ -357,6 +359,7 @@ class TabDialog(QtGui.QMainWindow):
         self.launcher = ''
         self.translate_user = '$USER$'
         self.category_multi = False
+        self.url_field = ''
         cur.execute("select field, description from fields where typ = 'Settings'")
         row = cur.fetchone()
         while row is not None:
@@ -371,6 +374,8 @@ class TabDialog(QtGui.QMainWindow):
                 self.launcher = row[1]
             elif row[0] == 'Translate Userid':
                 self.translate_user = row[1]
+            elif row[0] == 'URL Field':
+                self.url_field = row[1].upper()
             row = cur.fetchone()
         self.attr_cat.setText(self.category)
         try:
@@ -479,13 +484,26 @@ class TabDialog(QtGui.QMainWindow):
                        if reply == QtGui.QMessageBox.Yes:
                            sql = "delete from meta where field = ?"
                            updcur.execute(sql, (row[0], ))
+                   if row[0].upper() == self.url_field:
+                       sql = "delete from fields where typ = 'Settings' and field = 'URL Field'"
+                       updcur.execute(sql)
             row = cur.fetchone()
         for key, value in upd_rows.items():
+            if key == '':
+                continue
             sql = "insert into fields (typ, field, description) values (?, ?, ?)"
             updcur.execute(sql, (self.sender().text(), key, value))
             if meta:
                 if key == 'Keyword':
                     cnt = self.metacombo.count()
+                elif key.upper() == 'URL':
+                    cur.execute("select description from fields where typ = 'Settings'" + \
+                                " and field = 'URL Field'")
+                    row = cur.fetchone()
+                    if row is None:
+                        sql = "insert into fields (typ, field, description) values (?, ?, ?)"
+                        updcur.execute(sql, ('Settings', 'URL Field', 'URL'))
+                        self.url_field = 'URL'
                 self.metacombo.addItem(key)
             elif info:
                 if key == 'Catalogue':
@@ -695,7 +713,13 @@ class TabDialog(QtGui.QMainWindow):
                 break
             cur.execute(sql, (self.rows[self.row + trw], ))
             row = cur.fetchone()
-            if self.launcher != '':
+            if row[1] == '' and self.url_field != '':
+                button = QtGui.QPushButton('', self.table)
+                button.setIcon(QtGui.QIcon('url.png'))
+                button.setFlat(True)
+                self.table.setCellWidget(trw, 0, button)
+                button.clicked.connect(partial(self._buttonItemClicked, trw))
+            elif self.launcher != '':
                 button = QtGui.QPushButton('', self.table)
                 button.setIcon(QtGui.QIcon('open.png'))
                 button.setFlat(True)
@@ -758,6 +782,15 @@ class TabDialog(QtGui.QMainWindow):
         item = cur.fetchone()
         cur.close()
         if item[1] == '':
+            if self.url_field != '': # maybe we have a url
+                sql = "select value from meta where item_id = ? and field = ?"
+                cur = self.conn.cursor()
+                cur.execute(sql, (self.rows[self.row + row], self.url_field))
+                item = cur.fetchone()
+                cur.close()
+                if item is not None:
+                    if item[0] != '':
+                        webbrowser.open_new(item[0])
             return
         fil = item[0] + item[1]
         fil = fil.replace(self.translate_user, getUser())
