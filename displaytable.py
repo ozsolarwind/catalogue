@@ -592,7 +592,7 @@ class Table(QtGui.QDialog):
                 try:
                     if self.lens[txt][1] > 0:
                         style.num_format_str = '#,##0.' + '0' * self.lens[txt][1]
-                    elif self.labels[txt] == 'int':
+                    elif self.labels[txt] == 'int' or self.labels[txt] == 'float':
                         style.num_format_str = '#,##0'
                 except:
                     pass
@@ -698,7 +698,6 @@ class Table(QtGui.QDialog):
                                     if valu == 0:
                                         valu = ''
                                     elif len(str(valu).split('.')[1]) > 1:
-                                        valu = str(valu)
                                         valu = str(valu)
                                 except:
                                     self.message.setText('Error with ' + self.fields[cl].title() + ' field - ' + tst)
