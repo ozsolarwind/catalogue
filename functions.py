@@ -551,6 +551,7 @@ def getISBNInfo(isbn, db_conn):
     if response.status == 200 and response.reason == 'OK':
         data_dict = json.loads(response.read())
         for isbn, data in data_dict.items():
+            by_statement = ''
             for key, value in data.items():
             # deal with the keys I'm interested in
                 if key == 'title':
@@ -562,7 +563,7 @@ def getISBNInfo(isbn, db_conn):
                     authors = authors[:-2]
                     properties['Author'] = authors
                 elif key == 'by_statement':
-                    print(key, value)
+                    by_statement = value
                 elif key == 'classifications':
                     dewey = ''
                     try:
@@ -582,6 +583,9 @@ def getISBNInfo(isbn, db_conn):
                     properties['Date'] = value
                 elif key == 'notes':
                     properties['Notes'] = value
+            if by_statement != '':
+                if 'Author' not in properties.keys():
+                    properties['Author'] = by_statement
     else:
         print(str(response.status) + ' ' + response.reason)
     conn.close()
