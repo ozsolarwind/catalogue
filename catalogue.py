@@ -566,9 +566,23 @@ class TabDialog(QtGui.QMainWindow):
     def addISBN(self):
         if self.conn is None:
             return
-        isbn, ok = QtGui.QInputDialog.getText(None, 'GET ISBN', 'Enter ISBN:')
+        isbn, ok = QtGui.QInputDialog.getText(None, 'Get ISBN Details', 'Enter ISBN:')
         if not ok:
             return
+        cur = self.conn.cursor()
+        sql = "select (item_id) from meta where field = ? and value = ?"
+        cur.execute(sql, (self.isbn_field, isbn))
+        row = cur.fetchone()
+        cur.close()
+        if row is not None:
+            msgbox = QtGui.QMessageBox()
+            msgbox.setWindowTitle('Add ISBN')
+            msgbox.setText('ISBN ' + isbn + ' in Catalogue. Press Yes to add a duplicate')
+            msgbox.setIcon(QtGui.QMessageBox.Question)
+            msgbox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+            reply = msgbox.exec_()
+            if reply != QtGui.QMessageBox.Yes:
+                return
         properties = getISBNInfo(isbn, self.conn)
         self.addItem(properties=properties)
 
