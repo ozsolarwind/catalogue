@@ -56,7 +56,7 @@ class AnObject(QtGui.QDialog):
         QtGui.QWidget.resize( self, w, h )
 
     def __init__(self, dialog, anobject, readonly=True, title=None, section=None,
-                 textedit=True, duplicate=None, combolist=None, multi=False):
+                 textedit=True, duplicate=None, combolist=None, multi=False, locnlist=None):
         super(AnObject, self).__init__()
         self.anobject = anobject
         self.readonly = readonly
@@ -65,6 +65,7 @@ class AnObject(QtGui.QDialog):
         self.textedit = textedit
         self.duplicate = duplicate
         self.combolist = combolist
+        self.locnlist = locnlist
         self.multi = multi
         dialog.setObjectName('Dialog')
         self.initUI()
@@ -93,7 +94,7 @@ class AnObject(QtGui.QDialog):
         grid.addWidget(quit, i + 1, 0)
         quit.clicked.connect(self.quitClicked)
         if not self.readonly:
-            save = QtGui.QPushButton("Save", self)
+            save = QtGui.QPushButton('Save', self)
             save.setMaximumWidth(width)
             grid.addWidget(save, i + 1, 1)
             save.clicked.connect(self.saveClicked)
@@ -269,10 +270,21 @@ class AnObject(QtGui.QDialog):
                                 self.edit.append(self.metacombo)
                                 self.metacombo.setCurrentIndex(j)
                         else:
+                            if self.locnlist is not None and key == self.locnlist[0]:
+                                self.locncombo = QtGui.QComboBox(self)
+                                j = 0
+                                for val in self.locnlist[1]:
+                                    if value == val:
+                                        j = self.locncombo.count()
+                                    self.locncombo.addItem(val)
+                                self.edit.append(self.locncombo)
+                                self.locncombo.setCurrentIndex(j)
+                                self.locncombo.setEditable(True)
+                            else:
         #                    self.edit.append(QtGui.QTextEdit())
-                            self.edit.append(GrowingTextEdit())
-                            self.edit[-1].resize(widths[1], rows[key][0])
-                            self.edit[-1].setPlainText(value)
+                                self.edit.append(GrowingTextEdit())
+                                self.edit[-1].resize(widths[1], rows[key][0])
+                                self.edit[-1].setPlainText(value)
                     if self.readonly:
                         self.edit[-1].setReadOnly(True)
                     i += 1
@@ -323,7 +335,7 @@ class AnObject(QtGui.QDialog):
                     else:
                          self.field_type.append('str')
                     label.append(QtGui.QLabel(prop.title() + ':'))
-                    if self.field_type[-1] != "str":
+                    if self.field_type[-1] != 'str':
                         self.edit.append(QtGui.QLineEdit(str(attr)))
                     else:
                         self.edit.append(QtGui.QLineEdit(attr))
@@ -356,7 +368,7 @@ class AnObject(QtGui.QDialog):
     #    chosen.activateWindow()
    #     self.setWindowFlags(QtCore.Qt.WindowStaysOnBottomHint)
         chosen.exec_()
-    #    self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+   #     self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         selected = chosen.getValues()
         del chosen
         if selected is None:
@@ -381,6 +393,8 @@ class AnObject(QtGui.QDialog):
                             self.anobject[self.keys[i]] = self.chosen
                         else:
                             self.anobject[self.keys[i]] = self.metacombo.currentText()
+                    elif self.locnlist is not None and self.keys[i] == self.locnlist[0]:
+                        self.anobject[self.keys[i]] = self.locncombo.currentText()
                     else:
                         try:
                             self.anobject[self.keys[i]] = str(self.edit[i].toPlainText())
