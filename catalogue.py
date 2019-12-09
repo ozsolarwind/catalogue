@@ -102,6 +102,11 @@ class TabDialog(QtGui.QMainWindow):
         addfile = QtGui.QPushButton(self.tr('&Add File'))
         buttonLayout.addWidget(addfile)
         self.connect(addfile, QtCore.SIGNAL('clicked()'), self.addFile)
+        self.addisbn = QtGui.QPushButton(self.tr('&Add ISBN'))
+        buttonLayout.addWidget(self.addisbn)
+        self.connect(self.addisbn, QtCore.SIGNAL('clicked()'), self.addISBN)
+        if self.isbn_field == '':
+            self.addisbn.setVisible(False)
         QtGui.QShortcut(QtGui.QKeySequence('pgdown'), self, self.nextRows)
         QtGui.QShortcut(QtGui.QKeySequence('pgup'), self, self.prevRows)
         buttons = QtGui.QFrame()
@@ -357,9 +362,12 @@ class TabDialog(QtGui.QMainWindow):
         self.category = 'Category'
         self.pdf_decrypt = 'qpdf'
         self.launcher = ''
+        self.location_list = False
         self.translate_user = '$USER$'
         self.category_multi = False
         self.url_field = ''
+        self.isbn_field = ''
+        self.dewey_field = ''
         cur.execute("select field, description from fields where typ = 'Settings'")
         row = cur.fetchone()
         while row is not None:
@@ -370,13 +378,27 @@ class TabDialog(QtGui.QMainWindow):
                 self.category = row[1].title()
             elif row[0] == 'Decrypt PDF':
                 self.pdf_decrypt = row[1]
+            elif row[0] == 'Dewey Field':
+                self.dewey_field = row[1].title()
+            elif row[0] == 'ISBN Field':
+                self.isbn_field = row[1].upper()
             elif row[0] == 'Launch File':
                 self.launcher = row[1]
+            elif row[0] == 'Location Choice':
+                if row[1].lower() == 'list':
+                    self.location_list = True
             elif row[0] == 'Translate Userid':
                 self.translate_user = row[1]
             elif row[0] == 'URL Field':
                 self.url_field = row[1].upper()
             row = cur.fetchone()
+        try:
+            if self.isbn_field != '':
+                 self.addisbn.setVisible(True)
+            else:
+                 self.addisbn.setVisible(False)
+        except:
+            pass
         self.attr_cat.setText(self.category)
         try:
             if self.launcher == '':
@@ -541,6 +563,15 @@ class TabDialog(QtGui.QMainWindow):
             properties = getPDFInfo(new_file, properties=properties, decrypt=self.pdf_decrypt)
         self.addItem(properties=properties)
 
+    def addISBN(self):
+        if self.conn is None:
+            return
+        isbn, ok = QtGui.QInputDialog.getText(None, 'GET ISBN', 'Enter ISBN:')
+        if not ok:
+            return
+        properties = getISBNInfo(isbn, self.conn)
+        self.addItem(properties=properties)
+
     def addItem(self, properties=None):
         if self.conn is None:
             return
@@ -569,8 +600,18 @@ class TabDialog(QtGui.QMainWindow):
         while row is not None:
             combolist[1].append(row[0])
             row = cur.fetchone()
+        if self.location_list:
+            locnlist = ['Location', []]
+            cur.execute("select distinct location from items where filename = '' order by location")
+            row = cur.fetchone()
+            while row is not None:
+                locnlist[1].append(row[0])
+                row = cur.fetchone()
+        else:
+            locnlist = None
         dialog = displayobject.AnObject(QtGui.QDialog(), addproperty, readonly=False,
-                 textedit=True, title='Add Item', combolist=combolist, multi=self.category_multi)
+                 textedit=True, title='Add Item', combolist=combolist, multi=self.category_multi,
+                 locnlist=locnlist)
         dialog.exec_()
         if dialog.getValues() is None or dialog.getValues()['Title'] == '':
             cur.close()
@@ -759,11 +800,15 @@ class TabDialog(QtGui.QMainWindow):
             cur.execute(sql, (self.rows[self.row + trw], ))
             row = cur.fetchone()
             if row[1] == '' and self.url_field != '':
-                button = QtGui.QPushButton('', self.table)
-                button.setIcon(QtGui.QIcon('url.png'))
-                button.setFlat(True)
-                self.table.setCellWidget(trw, 0, button)
-                button.clicked.connect(partial(self._buttonItemClicked, trw))
+                # need to check here if they have a url
+                cur.execute(sql1, (self.rows[self.row + trw], self.url_field))
+                urow = cur.fetchone()
+                if urow is not None:
+                    button = QtGui.QPushButton('', self.table)
+                    button.setIcon(QtGui.QIcon('url.png'))
+                    button.setFlat(True)
+                    self.table.setCellWidget(trw, 0, button)
+                    button.clicked.connect(partial(self._buttonItemClicked, trw))
             elif self.launcher != '':
                 button = QtGui.QPushButton('', self.table)
                 button.setIcon(QtGui.QIcon('open.png'))
@@ -884,10 +929,19 @@ class TabDialog(QtGui.QMainWindow):
         while srow is not None:
             combolist[1].append(srow[0])
             srow = cur.fetchone()
+        if itmproperty['Filename'] == '' and self.location_list:
+            locnlist = ['Location', []]
+            cur.execute("select distinct location from items where filename = '' order by location")
+            lrow = cur.fetchone()
+            while lrow is not None:
+                locnlist[1].append(lrow[0])
+                lrow = cur.fetchone()
+        else:
+            locnlist = None
         cur.close()
         dialog = displayobject.AnObject(QtGui.QDialog(), itmproperty, readonly=False,
                  textedit=True, title='Edit Item (' + str(self.rows[self.row + row]) + ')',
-                 combolist=combolist, multi=self.category_multi)
+                 combolist=combolist, multi=self.category_multi, locnlist=locnlist)
         dialog.exec_()
         if dialog.getValues() is None:
             return
