@@ -584,6 +584,13 @@ class TabDialog(QtGui.QMainWindow):
             if reply != QtGui.QMessageBox.Yes:
                 return
         properties = getISBNInfo(isbn, self.conn)
+        if len(properties) > 1: # got some stuff
+            try:
+                properties['Notes'] = properties['Notes'] + '\n(info derived from openlibrary.org)'
+            except:
+                properties['Notes'] = '(info derived from openlibrary.org)'
+        else:
+            QtGui.QApplication.clipboard().setText(isbn)
         self.addItem(properties=properties)
 
     def addItem(self, properties=None):
