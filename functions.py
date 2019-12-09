@@ -21,6 +21,8 @@
 
 import csv
 from datetime import datetime
+import json
+import http.client
 import os
 import sqlite3
 from sqlite3 import Error
@@ -527,4 +529,60 @@ def getPDFInfo(filename, properties=None, decrypt=None):
                          properties[columns[infos[key]]] = value
                      except:
                          pass
+    return properties
+
+def getISBNInfo(isbn, db_conn):
+    cur = db_conn.cursor()
+    cur.execute("select description from fields where typ = 'Settings' and field = 'ISBN Field'")
+    try:
+        isbn_field = cur.fetchone()[0]
+    except:
+        isbn_field = 'ISBN'
+    cur.execute("select description from fields where typ = 'Settings' and field = 'Dewey Field'")
+    try:
+        dewey_field = cur.fetchone()[0]
+    except:
+        dewey_field = 'Dewey Decimal'
+    cur.close()
+    properties = {isbn_field: isbn}
+    conn = http.client.HTTPConnection('openlibrary.org')
+    conn.request('GET', '/api/books?bibkeys=ISBN:' + isbn + '&jscmd=data&format=json')
+    response = conn.getresponse()
+    if response.status == 200 and response.reason == 'OK':
+        data_dict = json.loads(response.read())
+        for isbn, data in data_dict.items():
+            for key, value in data.items():
+            # deal with the keys I'm interested in
+                if key == 'title':
+                    properties['Title'] = value
+                elif key == 'authors':
+                    authors = ''
+                    for who in value:
+                       authors += who['name'] + ', '
+                    authors = authors[:-2]
+                    properties['Author'] = authors
+                elif key == 'by_statement':
+                    print(key, value)
+                elif key == 'classifications':
+                    dewey = ''
+                    try:
+                        for clas in value['dewey_decimal_class']:
+                            dewey += clas + ', '
+                        dewey = dewey[:-2]
+                    except:
+                        pass
+                    properties[dewey_field] = dewey
+                elif key == 'publishers':
+                    publishers = ''
+                    for who in value:
+                        publishers += who['name'] + ', '
+                    publishers = publishers[:-2]
+                    properties['Publisher'] = publishers
+                elif key == 'publish_date':
+                    properties['Date'] = value
+                elif key == 'notes':
+                    properties['Notes'] = value
+    else:
+        print(str(response.status) + ' ' + response.reason)
+    conn.close()
     return properties
