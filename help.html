@@ -217,8 +217,8 @@ ul {
 <li>Decrypt PDF - the name of a program to decrypt simple encrypted PDFs when they're added to the catalogue. This currently only works for Linux and the qpdf command/program</li>
 <li>Dewey Field - a field to contain Dewey Decimal Classifications</li>
 <li>ISBN Field - a field to contain the ISBN number for an item</li>
-<li>Location Choice - You can choose the Location field to be a selection list by setting this value to <em>list</em>. You can add items to the list by simply typing in the new value. The default is for a &ldquo;freeform&rdquo; field</li>
 <li>Launch File - if set this is the command that will be issued to open a computer file. The value for Windows is <code>start &ldquo;&rdquo;</code> and for Linux <code>/usr/bin/xdg-open/</code>. To hide the launch column you need to set this to empty or delete the entry</li>
+<li>Location Choice - You can choose the Location field to be a selection list by setting this value to <em>list</em>. You can add items to the list by simply typing in the new value. The default is for a &ldquo;freeform&rdquo; field</li>
 <li>Translate Userid - if set any (or at least the first) occurence of the current userid will  be replaced by this value. This may be useful if the database is shared by several users. A suggested value is <code>$USER$</code></li>
 <li>URL Field - Can be used to specify an Internet address (URL) field. If an item has no Filename value but does have a URL value a browser window will be launched to open the URL. If you add a Meta field called <em>URL</em> this setting will be updated to set that as a URL Field</li>
 </ul></td>
@@ -266,22 +266,22 @@ ul {
 <li>Add - add a new item. You will be presented with a window to allow you to add values for all attributes. The category value is selected by a drop-down menu</li>
 <li>Add File - add a new item from a file. You choose the file and will then be presented with the Add window. If the file is a PDF file, the program will attempt to populate some values from the file properties. The fields (attributes) currently have to have the following names:
 <ul>
-<li>Title</li>
 <li>Author</li>
 <li>Date</li>
 <li>Keyword</li>
 <li>Publisher</li>
 <li>Subject</li>
+<li>Title</li>
 </ul>
 </li>
 <li>Add ISBN - add a new item using ISBN lookup. This button will only display if an ISBN Field is defined. You enter the ISBN and the program will obtain attempt to obtain some values from <a href="http://openlibrary.org">openlibrary.org</a> and then present the Add window. The fields (attributes) currently have to have the following names:
 <ul>
-<li>Title</li>
 <li>Author</li>
 <li>Date</li>
 <li>Dewey Decimal</li>
-<li>Publisher</li>
 <li>Notes</li>
+<li>Publisher</li>
+<li>Title</li>
 </ul>
 </li>
 </ul>

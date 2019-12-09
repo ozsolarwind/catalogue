@@ -1039,7 +1039,21 @@ class TabDialog(QtGui.QMainWindow):
             self.do_search()
 
     def showAbout(self):
-        about = 'A simple catalogue for documents, books, whatever...'
+        about = '<html>' + \
+                '<h2>Catalogue</h2>' + \
+                '<p>A simple catalogue for documents, books, whatever...</p>\n' + \
+                '<p>Copyright © 2019 Angus King</p>\n' + \
+                '<p>This program is free software: you can redistribute it and/or modify\n' + \
+                ' it under the terms of the GNU Affero General Public License as published\n' + \
+                ' by the Free Software Foundation, either version 3 of the License, or\n' + \
+                ' (at your option) any later version.</p>\n' + \
+                '<p>This program is distributed in the hope that it will be useful, but WITHOUT\n' + \
+                ' ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n' + \
+                ' FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public\n' + \
+                ' License for more details.</p>\n' + \
+                '<p>You should have received a copy of the GNU Affero General Public License\n' + \
+                ' along with this program. If not, see <a href="http://www.gnu.org/licenses/">\n' + \
+                'http://www.gnu.org/licenses/</a></html>'
         dialog = displayobject.AnObject(QtGui.QDialog(), about, title='About ' + self.me)
         dialog.exec_()
 
