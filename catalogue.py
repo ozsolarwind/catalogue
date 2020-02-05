@@ -72,6 +72,7 @@ class TabDialog(QtGui.QMainWindow):
         self.conn = None
         self.db = None
         self.dbs = configFile()
+        self.last_locn = '' # remember last location when adding books
         self.cattitle = QtGui.QLabel('')
         self.items = QtGui.QLabel('')
         self.metacombo = QtGui.QComboBox(self)
@@ -96,12 +97,15 @@ class TabDialog(QtGui.QMainWindow):
         buttonLayout.addWidget(quitButton)
         self.connect(quitButton, QtCore.SIGNAL('clicked()'), self.quit)
         QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quit)
-        addButton = QtGui.QPushButton(self.tr('&Add'))
+        addButton = QtGui.QPushButton(self.tr('&Add Item'))
         buttonLayout.addWidget(addButton)
         self.connect(addButton, QtCore.SIGNAL('clicked()'), self.addItem)
         addfile = QtGui.QPushButton(self.tr('&Add File'))
         buttonLayout.addWidget(addfile)
         self.connect(addfile, QtCore.SIGNAL('clicked()'), self.addFile)
+        addfiles = QtGui.QPushButton(self.tr('&Add Files'))
+        buttonLayout.addWidget(addfiles)
+        self.connect(addfiles, QtCore.SIGNAL('clicked()'), self.addFiles)
         self.addisbn = QtGui.QPushButton(self.tr('&Add ISBN'))
         buttonLayout.addWidget(self.addisbn)
         self.connect(self.addisbn, QtCore.SIGNAL('clicked()'), self.addISBN)
@@ -563,10 +567,66 @@ class TabDialog(QtGui.QMainWindow):
             properties = getPDFInfo(new_file, properties=properties, decrypt=self.pdf_decrypt)
         self.addItem(properties=properties)
 
+    def addFiles(self):
+        if self.conn is None:
+            return
+        folder = QtGui.QFileDialog.getExistingDirectory(None,
+                 'Folder to start searching for files',
+                 self.db[:self.db.rfind('/')], QtGui.QFileDialog.ShowDirsOnly)
+        if folder == '':
+            return
+        filetypes = ['pdf', 'html', 'doc', 'docx', 'xls', 'xlsx']
+        cur = self.conn.cursor()
+        cur.execute("select description from fields where typ = 'Settings'" + \
+                    " and field like 'File Type%'")
+        row = cur.fetchone()
+        while row is not None:
+            typs = row[0].split(' ')
+            for typ in typs:
+                if typ.lower() not in filetypes:
+                    filetypes.append(typ.lower())
+            row = cur.fetchone()
+        print(filetypes)
+        possibles = []
+        sql = "select location from items where filename = ?"
+        for top, dirs, files in os.walk(folder):
+            for name in files:
+                typ = name[name.rfind('.') + 1:]
+                if typ.lower() not in filetypes:
+                    continue
+                cur.execute(sql, (name, ))
+                row = cur.fetchone()
+                if row is None:
+                    possibles.append([top, name])
+            if len(possibles) > 19:
+                break
+        selected = whatFiles(possibles)
+        selected.exec_()
+        selected = selected.getValues()
+        if selected is None:
+            return
+        for item in selected:
+            properties = {}
+            item[0] = item[0] + '/'
+            properties['Title'] = item[1]
+            properties['Filename'] = item[1]
+            stat = os.stat(item[0] + item[1])
+            properties['Filesize'] = str(stat.st_size)
+            if self.translate_user != '':
+                item[0] = item[0].replace(getUser(), self.translate_user)
+            properties['Location'] = item[0]
+            properties['Acquired'] = time.strftime('%Y-%m-%d', time.localtime(stat.st_mtime))
+            if item[1][-4:].lower() == '.pdf':
+                properties = getPDFInfo(item[0] + item[1], properties=properties,
+                             decrypt=self.pdf_decrypt)
+            self.addItem(properties=properties)
+        return
+
     def addISBN(self):
         if self.conn is None:
             return
-        isbn, ok = QtGui.QInputDialog.getText(None, 'Get ISBN Details', 'Enter ISBN:')
+        isbn, ok = QtGui.QInputDialog.getText(None, 'Get ISBN Details', 'Enter ISBN:',
+                   QtGui.QLineEdit.Normal, '978')
         if not ok:
             return
         cur = self.conn.cursor()
@@ -603,6 +663,8 @@ class TabDialog(QtGui.QMainWindow):
                 addproperty[field] = properties[field]
             else:
                 addproperty[field] = ''
+        if addproperty['Location'] == '' and self.last_locn != '':
+            addproperty['Location'] = self.last_locn
         cur = self.conn.cursor()
         cur.execute("select field from fields where typ = 'Meta' order by field")
         row = cur.fetchone()
@@ -672,6 +734,7 @@ class TabDialog(QtGui.QMainWindow):
             self.items.setText('')
         cur.close()
         self.conn.commit()
+        self.last_locn = dialog.getValues()['Location']
         self.do_search()
 
     def metaChanged(self):
@@ -1150,6 +1213,61 @@ class ClickableQLabel(QtGui.QLabel):
     def mousePressEvent(self, event):
         QtGui.QApplication.widgetAt(event.globalPos()).setFocus()
         self.emit(QtCore.SIGNAL('clicked()'))
+
+
+class whatFiles(QtGui.QDialog):
+    def __init__(self, files):
+        super(whatFiles, self).__init__()
+        self.files = files
+        self.chosen = []
+        self.grid = QtGui.QGridLayout()
+        self.checkbox = []
+        self.checkbox.append(QtGui.QCheckBox('Check / Uncheck all', self))
+        self.grid.addWidget(self.checkbox[-1], 0, 0)
+        i = 0
+        c = 0
+        for fil in self.files:
+            self.checkbox.append(QtGui.QCheckBox(fil[1]))
+            i += 1
+            self.grid.addWidget(self.checkbox[-1], i, c)
+            if i > 25:
+                i = 0
+                c += 1
+        self.grid.connect(self.checkbox[0], QtCore.SIGNAL('stateChanged(int)'), self.check_all)
+        show = QtGui.QPushButton('Choose', self)
+        self.grid.addWidget(show, i + 1, c)
+        show.clicked.connect(self.showClicked)
+        self.setLayout(self.grid)
+        self.setWindowTitle('Select files to add')
+        QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quitClicked)
+        self.show_them = False
+        self.show()
+
+    def check_all(self):
+        if self.checkbox[0].isChecked():
+            for i in range(len(self.checkbox)):
+                self.checkbox[i].setCheckState(QtCore.Qt.Checked)
+        else:
+            for i in range(len(self.checkbox)):
+                self.checkbox[i].setCheckState(QtCore.Qt.Unchecked)
+
+    def closeEvent(self, event):
+        if not self.show_them:
+            self.chosen = None
+        event.accept()
+
+    def quitClicked(self):
+        self.close()
+
+    def showClicked(self):
+        for fil in range(1, len(self.checkbox)):
+            if self.checkbox[fil].checkState() == QtCore.Qt.Checked:
+                self.chosen.append(self.files[fil - 1])
+        self.show_them = True
+        self.close()
+
+    def getValues(self):
+        return self.chosen
 
 
 if '__main__' == __name__:

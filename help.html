@@ -216,6 +216,7 @@ ul {
 <li>Category Field - the name of the category field for the catalogue</li>
 <li>Decrypt PDF - the name of a program to decrypt simple encrypted PDFs when they're added to the catalogue. This currently only works for Linux and the qpdf command/program</li>
 <li>Dewey Field - a field to contain Dewey Decimal Classifications</li>
+<li>File Type (or File Types) - when adding files from a folder the types of file will be limited to a range of types - doc, docx, html, pdf, xls, and xlsx. If you want additional types you can use    this setting to include additional types, separated by spaces</li>
 <li>ISBN Field - a field to contain the ISBN number for an item</li>
 <li>Launch File - if set this is the command that will be issued to open a computer file. The value for Windows is <code>start &ldquo;&rdquo;</code> and for Linux <code>/usr/bin/xdg-open/</code>. To hide the launch column you need to set this to empty or delete the entry</li>
 <li>Location Choice - You can choose the Location field to be a selection list by setting this value to <em>list</em>. You can add items to the list by simply typing in the new value. The default is for a &ldquo;freeform&rdquo; field</li>
@@ -260,11 +261,11 @@ ul {
 <li>If you're searching for missing Filenames you'll be presented with a list of items not found in the item's Location (folder). You can attempt to find the location for the file by doing a search of folders. If you click on the Launch button for the item you'll be presented with a menu to set the starting folder to search. The program will search all folders below that to find the missing file. If there is a single copy of the file, the program will update the Location for the item and launch the item. If there is more than one copy of the file you will be presented with a list of locations plus the size of each file enabling you to choose the correct copy</li>
 </ul>
 <h3 style="color:red;">Buttons</h3>
-<p>There are three or four buttons:
+<p>There are four or five buttons:
 <ul>
-<li>Quit - exit the program</li>
-<li>Add - add a new item. You will be presented with a window to allow you to add values for all attributes. The category value is selected by a drop-down menu</li>
-<li>Add File - add a new item from a file. You choose the file and will then be presented with the Add window. If the file is a PDF file, the program will attempt to populate some values from the file properties. The fields (attributes) currently have to have the following names:
+<li><strong>Quit</strong> - exit the program</li>
+<li><strong>Add Item</strong> - add a new item. You will be presented with a window to allow you to add values for all attributes. The category value is selected by a drop-down menu</li>
+<li><strong>Add File</strong> - add a new item from a file. You choose the file and will then be presented with the Add window. If the file is a PDF file, the program will attempt to populate some values from the file properties. The fields (attributes) currently have to have the following names:
 <ul>
 <li>Author</li>
 <li>Date</li>
@@ -274,7 +275,10 @@ ul {
 <li>Title</li>
 </ul>
 </li>
-<li>Add ISBN - add a new item using ISBN lookup. This button will only display if an ISBN Field is defined. You enter the ISBN and the program will obtain attempt to obtain some values from <a href="http://openlibrary.org">openlibrary.org</a> and then present the Add window. If the ISBN isn't found it will be copied to the Clipboard so you can seacrh for it in your browser. The fields (attributes) currently have to have the following names:
+<li><strong>Add Files</strong> - add new items from a folder (and sub-folders below it). You choose a folder to start searching for files and will then be presented with a list of files to choose from. For each file chosen you will be presented with the Add window to add the file to the catalogue.
+<br /><strong>Note:</strong> The list presented will be capped at around 20 plus whatever files are candidates in the current folder being searched. It is also recommended to search for missing Filenames before adding files
+</li>
+<li><strong>Add ISBN</strong> - add a new item using ISBN lookup. This button will only display if an ISBN Field is defined. You enter the ISBN and the program will obtain attempt to obtain some values from <a href="http://openlibrary.org">openlibrary.org</a> and then present the Add window. If the ISBN isn't found it will be copied to the Clipboard so you can search for it in your browser. The fields (attributes) currently have to have the following names:
 <ul>
 <li>Author</li>
 <li>Date</li>
