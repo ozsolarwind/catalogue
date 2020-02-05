@@ -573,6 +573,11 @@ def getISBNInfo(isbn, db_conn):
                     except:
                         pass
                     properties[dewey_field] = dewey
+                elif key == 'identifiers':
+                    try:
+                        properties[isbn_field] = value['isbn_13'][0]
+                    except:
+                        pass
                 elif key == 'publishers':
                     publishers = ''
                     for who in value:
@@ -586,6 +591,11 @@ def getISBNInfo(isbn, db_conn):
             if by_statement != '':
                 if 'Author' not in properties.keys():
                     properties['Author'] = by_statement
+                else:
+                    if 'Notes' in properties.keys():
+                        properties['Notes'] = properties['Notes'] + '\n' + by_statement
+                    else:
+                        properties['Notes'] = by_statement
     else:
         print(str(response.status) + ' ' + response.reason)
     conn.close()
