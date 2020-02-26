@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019 Angus King
+#  Copyright (C) 2019-2020 Angus King
 #
 #  catalogue.py - This file is part of catalogue.
 #
@@ -59,12 +59,6 @@ class TabDialog(QtGui.QMainWindow):
                 else:
                     self.wrapmsg.setText('Wrapped to bottom')
         self.getRows()
-
-    def resizeEvent(self, event):
-    #    print('(43) resize (%d x %d)' % (event.size().width(), event.size().height()))
-        QtGui.QWidget.resizeEvent(self, event)
-        w = event.size().width()
-        h = event.size().height()
 
     def __init__(self, parent=None):
         QtGui.QMainWindow.__init__(self, parent)
@@ -251,12 +245,13 @@ class TabDialog(QtGui.QMainWindow):
         self.table.cellClicked.connect(self.item_selected)
         layout.addWidget(self.table, 3, 0, 1, 5)
         centralWidget = QtGui.QWidget(self)
+        size = QtCore.QSize(screen.width() - 50, screen.height() - 50)
+        centralWidget.setMaximumSize(size)
         self.setCentralWidget(centralWidget)
         centralWidget.setLayout(layout)
         self.metacombo.currentIndexChanged.connect(self.metaChanged)
         self.catcombo.currentIndexChanged.connect(self.catChanged)
-        size = QtCore.QSize(screen.width(), screen.height())
-        size = QtCore.QSize(min(screen.width(), 1100), screen.height() - 50)
+        size = QtCore.QSize(min(screen.width() - 50, 1100), screen.height() - 50)
         self.resize(size)
         if self.conn is not None:
             self.updDetails()
@@ -363,6 +358,7 @@ class TabDialog(QtGui.QMainWindow):
             self.cattitle.setText('<strong>' + cur.fetchone()[0] + '</strong> - ' + cur.fetchone()[0])
         except:
             self.cattitle.setText('<strong>' + self.db + '</strong>')
+        self.add_limit = 20
         self.category = 'Category'
         self.pdf_decrypt = 'qpdf'
         self.launcher = ''
@@ -375,10 +371,15 @@ class TabDialog(QtGui.QMainWindow):
         cur.execute("select field, description from fields where typ = 'Settings'")
         row = cur.fetchone()
         while row is not None:
-            if row[0] == 'Category Choice':
+            if row[0] == 'Add Limit':
+                try:
+                    self.add_limit = int(row[1])
+                except:
+                    pass
+            elif row[0] == 'Category Choice':
                 if row[1][:5].lower() == 'multi':
                     self.category_multi = True
-            if row[0] == 'Category Field':
+            elif row[0] == 'Category Field':
                 self.category = row[1].title()
             elif row[0] == 'Decrypt PDF':
                 self.pdf_decrypt = row[1]
@@ -586,7 +587,6 @@ class TabDialog(QtGui.QMainWindow):
                 if typ.lower() not in filetypes:
                     filetypes.append(typ.lower())
             row = cur.fetchone()
-        print(filetypes)
         possibles = []
         sql = "select location from items where filename = ?"
         for top, dirs, files in os.walk(folder):
@@ -598,9 +598,12 @@ class TabDialog(QtGui.QMainWindow):
                 row = cur.fetchone()
                 if row is None:
                     possibles.append([top, name])
-            if len(possibles) > 19:
+            if len(possibles) >= self.add_limit:
                 break
-        selected = whatFiles(possibles)
+        if len(possibles) == 0:
+            self.wrapmsg.setText('No files to add')
+            return
+        selected = whatFiles(possibles, self.launcher)
         selected.exec_()
         selected = selected.getValues()
         if selected is None:
@@ -760,6 +763,7 @@ class TabDialog(QtGui.QMainWindow):
 
     def do_search(self):
         # think about like options - '%S', '%S%', '%S_S%' '[a-zA-Z0-9_]%'
+        self.wrapmsg.setText('')
         self.field = self.metacombo.currentText()
         self.rows = []
         search = self.search.text()
@@ -802,7 +806,6 @@ class TabDialog(QtGui.QMainWindow):
                       " from items where " + self.field + " " + where + " group by " + \
                       self.field + " having count(" + self.field + ") > 1) i on o." + \
                       self.field + " = i." + self.field + " order by o." + self.field
-                    print(sql, search)
                     cur.execute(sql, (search, ))
                 else:
                     sql = "select o.id from items o inner join (select " + self.field + \
@@ -813,7 +816,6 @@ class TabDialog(QtGui.QMainWindow):
                 if search != '':
                     sql = "select (item_id) from meta where field = ? and value in (select value from meta where field = ? " + \
                           " and value " + where + " group by value having count(*) > 1) order by value"
-                    print(self.field, search, sql)
                     cur.execute(sql, (self.field, self.field, search))
                 else:
                     sql = "select (item_id) from meta where field = ? and value in (select value from meta where field = ? " + \
@@ -833,9 +835,13 @@ class TabDialog(QtGui.QMainWindow):
                   " order by value"
             if search == '_%':
                 sql = "select (id) from items where id not in (" + sql + ") order by title"
+            elif self.field == self.category:
+                sql = "select (id) from items where id in (" + sql + ") order by title"
             cur.execute(sql, (self.field, search))
         row = cur.fetchone()
         if self.find_file:
+            if row is not None:
+                self.wrapmsg.setText('Files missing. Click Launch icon(s) to search for new location.')
             while row is not None:
                 if self.translate_user != '':
                     folder = row[1].replace(self.translate_user, getUser())
@@ -1126,7 +1132,7 @@ class TabDialog(QtGui.QMainWindow):
         about = '<html>' + \
                 '<h2>Catalogue</h2>' + \
                 '<p>A simple catalogue for documents, books, whatever...</p>\n' + \
-                '<p>Copyright © 2019 Angus King</p>\n' + \
+                '<p>Copyright © 2019-2020 Angus King</p>\n' + \
                 '<p>This program is free software: you can redistribute it and/or modify\n' + \
                 ' it under the terms of the GNU Affero General Public License as published\n' + \
                 ' by the Free Software Foundation, either version 3 of the License, or\n' + \
@@ -1175,7 +1181,6 @@ class TabDialog(QtGui.QMainWindow):
                 return
             if len(possibles) == 1:
                 folder = possibles[0] + '/'
-                print(folder)
                 if self.translate_user != '':
                     folder = folder.replace(getUser(), self.translate_user)
                 sql = "update items set location = ? where id = ?"
@@ -1216,9 +1221,10 @@ class ClickableQLabel(QtGui.QLabel):
 
 
 class whatFiles(QtGui.QDialog):
-    def __init__(self, files):
+    def __init__(self, files, launcher=''):
         super(whatFiles, self).__init__()
         self.files = files
+        self.launcher = launcher
         self.chosen = []
         self.grid = QtGui.QGridLayout()
         self.checkbox = []
@@ -1226,8 +1232,9 @@ class whatFiles(QtGui.QDialog):
         self.grid.addWidget(self.checkbox[-1], 0, 0)
         i = 0
         c = 0
-        for fil in self.files:
-            self.checkbox.append(QtGui.QCheckBox(fil[1]))
+        for fil in range(len(self.files)):
+            self.checkbox.append(QtGui.QCheckBox(self.files[fil][1]))
+            self.checkbox[-1].setObjectName(str(fil))
             i += 1
             self.grid.addWidget(self.checkbox[-1], i, c)
             if i > 25:
@@ -1238,7 +1245,7 @@ class whatFiles(QtGui.QDialog):
         self.grid.addWidget(show, i + 1, c)
         show.clicked.connect(self.showClicked)
         self.setLayout(self.grid)
-        self.setWindowTitle('Select files to add')
+        self.setWindowTitle('Select files to add - Right-click to open')
         QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quitClicked)
         self.show_them = False
         self.show()
@@ -1268,6 +1275,15 @@ class whatFiles(QtGui.QDialog):
 
     def getValues(self):
         return self.chosen
+
+    def mousePressEvent(self, QMouseEvent):
+        if self.launcher == '':
+            return
+        cursor = QtGui.QCursor()
+        widget = QtGui.qApp.widgetAt(cursor.pos())
+        fil = int(widget.objectName())
+        if os.path.exists(self.files[fil][0] + '/' + self.files[fil][1]):
+            os.system(self.launcher + ' "' + self.files[fil][0] + '/' + self.files[fil][1] + '"')
 
 
 if '__main__' == __name__:
