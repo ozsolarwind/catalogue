@@ -358,7 +358,6 @@ class TabDialog(QtGui.QMainWindow):
             self.cattitle.setText('<strong>' + cur.fetchone()[0] + '</strong> - ' + cur.fetchone()[0])
         except:
             self.cattitle.setText('<strong>' + self.db + '</strong>')
-        self.add_limit = 20
         self.category = 'Category'
         self.pdf_decrypt = 'qpdf'
         self.launcher = ''
@@ -371,12 +370,7 @@ class TabDialog(QtGui.QMainWindow):
         cur.execute("select field, description from fields where typ = 'Settings'")
         row = cur.fetchone()
         while row is not None:
-            if row[0] == 'Add Limit':
-                try:
-                    self.add_limit = int(row[1])
-                except:
-                    pass
-            elif row[0] == 'Category Choice':
+            if row[0] == 'Category Choice':
                 if row[1][:5].lower() == 'multi':
                     self.category_multi = True
             elif row[0] == 'Category Field':
@@ -587,6 +581,15 @@ class TabDialog(QtGui.QMainWindow):
                 if typ.lower() not in filetypes:
                     filetypes.append(typ.lower())
             row = cur.fetchone()
+        add_limit = 20
+        cur.execute("select description from fields where typ = 'Settings'" + \
+                    " and field == 'Add Limit'")
+        row = cur.fetchone()
+        while row is not None:
+            try:
+                add_limit = int(row[1])
+            except:
+                pass
         possibles = []
         sql = "select location from items where filename = ?"
         for top, dirs, files in os.walk(folder):
@@ -598,7 +601,7 @@ class TabDialog(QtGui.QMainWindow):
                 row = cur.fetchone()
                 if row is None:
                     possibles.append([top, name])
-            if len(possibles) >= self.add_limit:
+            if len(possibles) >= add_limit:
                 break
         if len(possibles) == 0:
             self.wrapmsg.setText('No files to add')
@@ -1148,7 +1151,7 @@ class TabDialog(QtGui.QMainWindow):
         dialog.exec_()
 
     def showHelp(self):
-        dialog = displayobject.AnObject(QtGui.QDialog(), 'help.html', title='Help for ' + self.me)
+        dialog = displayobject.AnObject(QtGui.QDialog(), 'catalogue.html', title='Help for ' + self.me)
         dialog.exec_()
 
     def header_click(self, position):

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<!--
+#  Copyright (C) 2019 Angus King
+#
+#  catalogue.html - This file is part of catalogue.
+#
+#  catalogue is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as
+#  published by the Free Software Foundation, either version 3 of
+#  the License, or (at your option) any later version.
+#
+#  catalogue is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General
+#  Public License along with catalogue.  If not, see
+#  <http://www.gnu.org/licenses/>.
+#
+-->
+<html>
+<head>
+<style>
+code {
+    font-size: 120%;
+}
+dfn {
+    font-size: 110%;
+}
+div.experiment {
+    border: 1px solid red;
+}
+img {
+    vertical-align: bottom;
+}
+pre {
+    font-size: 125%;
+}
+table {
+    border: 1px solid black;
+    border-collapse: collapse;
+    vertical-align: top;
+}
+table.none {
+    border: none;
+    vertical-align: top;
+}
+td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+    vertical-align: top;
+}
+td.none {
+    border: none;
+    padding: 3px;
+    vertical-align: top;
+}
+td.lr {
+    border: none;
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    padding: 3px;
+    vertical-align: top;
+}
+td.top {
+    border: none;
+    border-top: 1px solid black;
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    padding: 3px;
+    vertical-align: top;
+}
+td.bottom {
+    border: none;
+    border-bottom: 1px solid black;
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    padding: 3px;
+    vertical-align: top;
+}
+td.right {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+    text-align: right;
+    vertical-align: top;
+}
+th {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+    vertical-align: top;
+}
+th.none {
+    border: none;
+    padding: 3px;
+    vertical-align: top;
+}
+ul.none {
+    display: block;
+    list-style-type: none;
+    margin-top: 1 em;
+    margin-bottom: 1 em;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 40px;
+}
+ul {
+    display: block;
+    list-style-type: disc;
+    margin-top: 1 em;
+    margin-bottom: 1 em;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 40px;
+}
+</style>
+<title>Catalog Help</title>
+</head>
+<body>
+<h1 id="help"><img src="books.png" alt="Catalogue">Simple Catalogue</h1>
+<p>A simple catalogue implementation.</p>
+<h2 id="overview">Overview</h2>
+<p>This application is a prototype of a catalogue for holding information about &ldquo;things&rdquo;. It attempts to be as unspecific as possible to improve its usefulness.</p>
+<p>The program uses catalogues which are stored in sqlite3 databases. sqlite3 databases are single files and require no additional programs or packages. By default each item has three attributes (fields):
+<ul>
+<li><dfn>Title</dfn> - the title for the item</li>
+<li><dfn>Location</dfn> - location for the item. If the item is a computer file this is the folder (directory) the file resides in</li>
+<li><dfn>Filename</dfn> - if the item is a computer file this is the name of the file</li>
+</ul>
+<p>In addition, the item can be assigned to one or more categories via use of a category field and additional attributes can be defined using <dfn>Meta</dfn> attributes (see <strong>Creating a new catalogue</strong> below).</p>
+<h2 id="install">Installation and Execution</h2>
+<p>There <del>is</del> will be a packaged version for Windows available as a self-extracting zip file from <a href="https://sourceforge.net/projects/catalogue/" target="_blank">https://sourceforge.net/projects/catalogue/</a> (the package has been created with PyInstaller). To install the package you can just open/launch it and extract it to your desired location. It may be necessary to execute the program as Administrator.</p>
+<p>To execute the program open catalogue.exe in the catalogue folder. You can easily set up a Desktop shortcut to point to the program.</p>
+<h3>Creating a new Catalogue</h3>
+<p>You can create a new catalogue by choosing the <strong>Catalogue &rarr; New</strong> menu option. As part of the creation process there are a number of settings and options to adjust the catalogue to suite your needs. These are described briefly in <strong>Menu options</strong> and include:
+<ul>
+<li>You can define a category attribute (field) for the catalogue to group items into a number of categories. These are the actions you need to do:
+<p>
+<ul>
+<li><strong>Attributes &rarr; Settings</strong> Update these settings to define the category field:
+<ul>
+<li>Category Field - Choose the name of the category field for the catalogue. For example, for a music catalogue you might call the category field <dfn>Genre</dfn></li>
+<li>Category Choice - You can choose to allow multiple Category values for an item by setting this value to <dfn>multi</dfn>. The default is a single value</li>
+</ul>
+<p>
+<li><strong>Attribues &rarr; Category</strong> (the menu item will display the name of the Category field) Update the list of categories available. When adding or editing an item you will either be presented with a pulldown list if a single Category value is allowed or you click on the Category field to select multiple category values. For multiple categories pressing Ctrl+left mouse button allows you to select a set of individual values while Shift+left mouse button allows you to select a group of values</li>
+</ul>
+<p>
+<li>You can define any number of additional attributes for each item by defining additional <dfn>Meta</dfn> fields.
+<p>
+<ul>
+<li><strong>Attribues &rarr; Meta</strong> Update the list of attributes (fields) available. When adding or editing an item you will be presented with a window containing all attributes to be updated</li>
+</ul>
+<p>
+<li>You can load a spreadsheet or CSV file into the catalogue by choosing <strong>Catalogue &rarr; Load</strong>. The load process will create attributes (fields) identified by the spreadsheet column names. If you're loading the data into a new catalogue you can use one of the spreadsheet column names to define the category attribute</li>
+</ul>
+<h3>Main Window</h3>
+<p>The application has a main window, as described below.</p>
+<p>
+<img src="cat1.png" alt="Main window">
+</p>
+<h3 style="color:red;">Menu options</h3>
+<p>The catalogue has a number of menu options.</p>
+<table border="0", class="none">
+<tr class="none">
+<td class="none"><dfn><strong>Catalogue</strong></dfn></td>
+<td class="none">Perform catalogue functions</p>
+<table border="0", class="none">
+<tr class="none">
+<td class="none"><img src="open.png" alt="Open catalogue">&nbsp;&nbsp;Open</td>
+<td class="none">Open an existing catalogue</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="plus.png" alt="Add catalogue">&nbsp;&nbsp;Add</td>
+<td class="none">Add an existing catalogue into the list available</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="books.png" alt="New catalogue">&nbsp;&nbsp;New</td>
+<td class="none">Create a new catalogue and optionally load items into it from a spreadsheet or CSV file</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="load.png" alt="Load catalogue">&nbsp;&nbsp;Load</td>
+<td class="none">Load items into a catalogue. You can choose a spreadsheet or CSV file containing a list of items to be added to the catalogue</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="cancel.png" alt="Remove catalogue">&nbsp;&nbsp;Remove</td>
+<td class="none">Remove a catalogue. You will be asked if you want to delete the catalogue</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="quit.png" alt="Quit">&nbsp;&nbsp;Quit</td>
+<td class="none">Exit the program. The list of catalogues will be saved</td>
+</tr>
+</table>
+<tr class="none">
+<td class="none"><dfn><strong>Attributes</strong></dfn></td>
+<td class="none">Manage catalogue attributes. Once selected you will be presented with existing attributes and be able to add or update these.</p>
+<table border="0", class="none">
+<tr class="none">
+<td class="none"><img src="copy.png" alt="Categories">&nbsp;&nbsp;Category</td>
+<td class="none">You can store items in a number of categories. This option allows you to maintain the categories. The field name for the categories is chosen when you first load items into the catalogue (see Settings below)</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="edit.png" alt="Info">&nbsp;&nbsp;Info</td>
+<td class="none">There are two Info items which appear as a header line and provide the <span style="color:red;">Catalogue name and description</span>:
+<ul>
+<li><dfn>Catalogue</dfn> - the name of the catalogue database</li>
+<li><dfn>Description</dfn> - a description for the catalogue</li>
+</ul></td>
+</tr>
+<tr class="none">
+<td class="none"><img src="books.png" alt="Meta">&nbsp;&nbsp;Meta</td>
+<td class="none">Maintain additional attributes that can be created for each item. Editing an item will display the list of attributes for update</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="edit.png" alt="Settings">&nbsp;&nbsp;Settings</td>
+<td class="none">There are a small number of Settings for the catalogue, some of which control some aspects for computer files and folders.
+<ul>
+<li><dfn>Add Limit</dfn> - When adding files the list of files presented will be capped at around this value. The default is 20</li>
+<li><dfn>Category Choice</dfn> - You can choose to allow multiple Category values for an item by setting this value to <dfn>multi</dfn>. The default is a single value</li>
+<li><dfn>Category Field</dfn> - the name of the category field for the catalogue</li>
+<li><dfn>Decrypt PDF</dfn> - the name of a program to decrypt simple encrypted PDFs when they're added to the catalogue. This currently only works for Linux and the qpdf command/program</li>
+<li><dfn>Dewey Field</dfn> - a field to contain Dewey Decimal Classifications</li>
+<li><dfn>File Type</dfn> (or <dfn>File Types</dfn>) - when adding files from a folder the types of file will be limited to a range of types - doc, docx, html, pdf, xls, and xlsx. If you want additional types you can use    this setting to include additional types, separated by spaces</li>
+<li><dfn>ISBN Field</dfn> - a field to contain the ISBN number for an item</li>
+<li><dfn>Launch File</dfn> - if set this is the command that will be issued to open a computer file. The value for Windows is <code>start &ldquo;&rdquo;</code> and for Linux <code>/usr/bin/xdg-open/</code>. To hide the launch column you need to set this to empty or delete the entry</li>
+<li><dfn>Location Choice</dfn> - You can choose the <dfn>Location</dfn> field to be a selection list by setting this value to <dfn>list</dfn>. You can add items to the list by simply typing in the new value. The default is for a &ldquo;freeform&rdquo; field</li>
+<li><dfn>Translate Userid</dfn> - if set any (or at least the first) occurence of the current userid will  be replaced by this value. This may be useful if the database is shared by several users. A suggested value is <code>$USER$</code></li>
+<li><dfn>URL Field</dfn> - Can be used to specify an Internet address (URL) field. If an item has no <dfn>Filename</dfn> value but does have a URL value a browser window will be launched to open the URL. If you add a <dfn>Meta</dfn> field called <dfn>URL</dfn> this setting will be updated to set that as a <dfn>URL Field</dfn></li>
+</ul></td>
+</tr>
+</table>
+<tr class="none">
+<td class="none"><dfn><strong>Help</strong></dfn></td>
+<td class="none">Display some help about the program</p>
+<table border="0", class="none">
+<tr>
+<tr class="none">
+<td class="none"><img src="help.png" alt="Help">&nbsp;&nbsp;Help (F1)</td>
+<td class="none">Display the help file. The default help file, <code>catalogue.html</code>, is a standard HTML file which can be displayed with your browser</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="about.png" alt="About">&nbsp;&nbsp;About (Ctrl+I)</td>
+<td class="none">Display details about the program including any licensing conditions</td>
+</tr></td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<h3 style="color:red;">Search fields</h3>
+<p>There are a number of search fields for items within the catalogue.</p>
+<ul>
+<li>The first field allows you to select a search attribute (field) or all attributes via a drop-down list</li>
+<li>The second field allows you to specify a search filter
+<ul>
+<li><dfn>equal</dfn> - items equal the search criteria for the chosen attribute</li>
+<li><dfn>starts with</dfn> - chosen attribute values start with the search criteria</li>
+<li><dfn>contains</dfn> - the chosen attribute contains the search criteria</li>
+<li><dfn>missing</dfn> - select items with missing values for the chosen attribute</li>
+<li><dfn>duplicate</dfn> - select items that have duplicate values. If you specify a search value duplicates must start with this value</li>
+</ul>
+<li>The third field allows you to specify a search value. If the search filter is <dfn>starts with</dfn> and the search value is empty all items with the chosen attribute will be chosen. If you're searching for <dfn>duplicate</dfn> values (for example, locations) you can precede the search value with a <dfn>%</dfn> to find the search value anywhere</li>
+<li>Pressing the Search button will initiate the search. Often pressing Enter will also initiate the search</li>
+<li>Below the search fields there are details on how many items satisfy the search and which items are being displayed in the list</li>
+<li>If you're searching for <dfn>missing</dfn> <dfn>Filename</dfn>s you'll be presented with a list of items not found in the item's <dfn>Location</dfn> (folder). You can attempt to find the location for the file by doing a search of folders. If you click on the <strong>Launch</strong> button for the item you'll be presented with a menu to set the starting folder to search. The program will search all folders below that to find the missing file. If there is a single copy of the file, the program will update the <dfn>Location</dfn> for the item and launch the item. If there is more than one copy of the file you will be presented with a list of locations plus the size of each file enabling you to choose the correct copy</li>
+</ul>
+<h3 style="color:red;">Buttons</h3>
+<p>There are four or five buttons:
+<ul>
+<li><strong>Quit</strong> - exit the program</li>
+<li><strong>Add Item</strong> - add a new item. You will be presented with a window to allow you to add values for all attributes. The category value is selected by a drop-down menu</li>
+<li><strong>Add File</strong> - add a new item from a file. You choose the file and will then be presented with the Add window. If the file is a PDF file, the program will attempt to populate some values from the file properties. The fields (attributes) currently have to have the following names:
+<ul>
+<li>Author</li>
+<li>Date</li>
+<li>Keyword</li>
+<li>Publisher</li>
+<li>Subject</li>
+<li>Title</li>
+</ul>
+</li>
+<li><strong>Add Files</strong> - add new items from a folder (and sub-folders below it). You choose a folder to start searching for files and will then be presented with a list of files to choose from. For each file chosen you will be presented with the Add window to add the file to the catalogue. If you right-click on a file it will be opened (launched) to enable you to assess whether to add it to the catalogue or not.
+<br /><strong>Note:</strong> The list presented will be capped at around 20 plus whatever files are candidates in the current folder being searched. It is also recommended to search for missing <dfn>Filename</dfn>s before adding files
+</li>
+<li><strong>Add ISBN</strong> - add a new item using ISBN lookup. This button will only display if an ISBN Field is defined. You enter the ISBN and the program will obtain attempt to obtain some values from <a href="http://openlibrary.org">openlibrary.org</a> and then present the Add window. If the ISBN isn't found it will be copied to the Clipboard so you can search for it in your browser. The fields (attributes) currently have to have the following names:
+<ul>
+<li>Author</li>
+<li>Date</li>
+<li>Dewey Decimal</li>
+<li>Notes</li>
+<li>Publisher</li>
+<li>Title</li>
+</ul>
+</li>
+</ul>
+<h3>List of items</h3>
+<p>The items satisfying the search criteria are displayed as a list one &ldquo;page&rdquo; at a time. The number of items displayed in a page can be adjusted by the Rows per page at the top of the list. You can navigate the list via either the scroll-bar on the mouse or using Page-Up or Page-Down. The list will display the <dfn>Title</dfn> and the <dfn>Category</dfn> for each item. If appropiate the list will also display the <span style="color:red;">Search by attribute</span>. If there is a value for the <span style="color:red;">Launch button</span> a button will be displayed for each item, either an open button (<img src="open.png" alt="Open file">) or, if there is a URL attribute, a browser launch button (<img src="url.png" alt="Open browser">). Pressing the button will launch the application for the chosen item. To delete an item you right click on the number to the left of the item in the list.</p>
+<p>
+<img src="cat2.png" alt="Main window">
+</p>
+</body>
+</html>
