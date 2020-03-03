@@ -590,6 +590,7 @@ class TabDialog(QtGui.QMainWindow):
                 add_limit = int(row[1])
             except:
                 pass
+            row = cur.fetchone()
         possibles = []
         sql = "select location from items where filename = ?"
         for top, dirs, files in os.walk(folder):
