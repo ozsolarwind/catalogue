@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019 Angus King
+#  Copyright (C) 2019-2020 Angus King
 #
 #  displayobject.py - This file is part of catalogue.
 #
@@ -21,12 +21,15 @@
 
 import os
 import sys
-from PyQt4 import Qt, QtCore, QtGui
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PyQt5.Qt import *
 
 from functions import *
 
 
-class GrowingTextEdit(QtGui.QPlainTextEdit):
+class GrowingTextEdit(QPlainTextEdit):
 # From: https://stackoverflow.com/questions/11851020/a-qwidget-like-qtextedit-that-wraps-its-height-automatically-to-its-contents
     def __init__(self, *args, **kwargs):
         super(GrowingTextEdit, self).__init__(*args, **kwargs)
@@ -42,18 +45,18 @@ class GrowingTextEdit(QtGui.QPlainTextEdit):
             self.setMinimumHeight(docHeight)
 
 
-class AnObject(QtGui.QDialog):
-    procStart = QtCore.pyqtSignal(str)
+class AnObject(QDialog):
+    procStart = pyqtSignal(str)
 
     def resizeEvent(self, event):
    #     print('(36) resize (%d x %d)' % (event.size().width(), event.size().height()))
-        QtGui.QWidget.resizeEvent(self, event)
+        QWidget.resizeEvent(self, event)
         w = event.size().width()
         h = event.size().height()
 
     def resize(self, w, h):
     #    # Pass through to Qt to resize the widget.
-        QtGui.QWidget.resize( self, w, h )
+        QWidget.resize( self, w, h )
 
     def __init__(self, dialog, anobject, readonly=True, title=None, section=None,
                  textedit=True, duplicate=None, combolist=None, multi=False, locnlist=None):
@@ -76,38 +79,38 @@ class AnObject(QtGui.QDialog):
             grid.setColumnMinimumWidth(1, widths[1] + 10)
         i += 1
         if isinstance(self.anobject, dict) and self.textedit:
-            self.message = QtGui.QLabel('') #str(heights))
+            self.message = QLabel('') #str(heights))
             msg_font = self.message.font()
             msg_font.setBold(True)
             self.message.setFont(msg_font)
-            msg_palette = QtGui.QPalette()
-            msg_palette.setColor(QtGui.QPalette.Foreground, QtCore.Qt.red)
+            msg_palette = QPalette()
+            msg_palette.setColor(QPalette.Foreground, Qt.red)
             self.message.setPalette(msg_palette)
             grid.addWidget(self.message, i + 1, 1)
             i += 1
         if isinstance(self.anobject, str):
-            quit = QtGui.QPushButton('Close', self)
+            quit = QPushButton('Close', self)
         else:
-            quit = QtGui.QPushButton('Quit', self)
+            quit = QPushButton('Quit', self)
         width = quit.fontMetrics().boundingRect('Close').width() + 10
         quit.setMaximumWidth(width)
         grid.addWidget(quit, i + 1, 0)
         quit.clicked.connect(self.quitClicked)
         if not self.readonly:
-            save = QtGui.QPushButton('Save', self)
+            save = QPushButton('Save', self)
             save.setMaximumWidth(width)
             grid.addWidget(save, i + 1, 1)
             save.clicked.connect(self.saveClicked)
-        frame = QtGui.QFrame()
+        frame = QFrame()
         frame.setLayout(grid)
-        frame.setFrameShape(QtGui.QFrame.NoFrame)
-        scroll = QtGui.QScrollArea()
+        frame.setFrameShape(QFrame.NoFrame)
+        scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(frame)
-        layout = QtGui.QVBoxLayout(self)
+        layout = QVBoxLayout(self)
         layout.addWidget(scroll)
         self.setLayout(layout)
-        screen = QtGui.QDesktopWidget().availableGeometry()
+        screen = QDesktopWidget().availableGeometry()
         h = heights * i * 2.5
         w = widths[0] + widths[1] + 80
         if w > screen.width():
@@ -129,7 +132,7 @@ class AnObject(QtGui.QDialog):
             self.setWindowTitle('?')
         else:
             self.setWindowTitle('Review ' + getattr(self.anobject, '__module__'))
-        self.setWindowIcon(QtGui.QIcon('books.png'))
+        self.setWindowIcon(QIcon('books.png'))
 
     def initUI(self):
         label = []
@@ -140,9 +143,9 @@ class AnObject(QtGui.QDialog):
         heights = 0
         rows = 0
         i = -1
-        grid = QtGui.QGridLayout()
+        grid = QGridLayout()
         if isinstance(self.anobject, str):
-            self.web = QtGui.QTextEdit()
+            self.web = QTextEdit()
             if os.path.exists(self.anobject):
                 htf = open(self.anobject, 'r')
                 html = htf.read()
@@ -201,7 +204,7 @@ class AnObject(QtGui.QDialog):
                 fnt = self.web.fontMetrics()
                 widths[0] = (widths[0]) * fnt.maxWidth()
                 heights = (heights) * fnt.height()
-                screen = QtGui.QDesktopWidget().availableGeometry()
+                screen = QDesktopWidget().availableGeometry()
                 if widths[0] > screen.width() * .67:
                     heights = int(heights / .67)
                     widths[0] = int(screen.width() * .67)
@@ -213,7 +216,7 @@ class AnObject(QtGui.QDialog):
         elif isinstance(self.anobject, dict):
             if self.textedit: # probably only this for catalogue app
                 self.keys = []
-                metrics = [QtGui.QLabel('text').fontMetrics(), GrowingTextEdit('text').fontMetrics()]
+                metrics = [QLabel('text').fontMetrics(), GrowingTextEdit('text').fontMetrics()]
                 rows = {}
                 for key, value in self.anobject.items():
                     if value is None:
@@ -238,18 +241,18 @@ class AnObject(QtGui.QDialog):
                     if value is None:
                         value = ''
                     self.field_type.append('str')
-                    label.append(QtGui.QLabel(key + ':'))
+                    label.append(QLabel(key + ':'))
                     self.keys.append(key)
                     if self.duplicate is not None and len(self.keys) == 1:
-                        self.edit.append(QtGui.QLineEdit())
+                        self.edit.append(QLineEdit())
                         self.edit[-1].resize(widths[1], rows[key][0])
                         self.edit[-1].setText(value)
                     else:
                         if self.combolist is not None and key == self.combolist[0]:
-                            label[-1] = QtGui.QLabel('<strong>' + key + ':</strong>')
+                            label[-1] = QLabel('<strong>' + key + ':</strong>')
                             if self.multi:
                                 self.metacombo = ClickableQLabel()
-                                frameStyle = QtGui.QFrame.Sunken | QtGui.QFrame.Panel
+                                frameStyle = QFrame.Sunken | QFrame.Panel
                                 self.metacombo.setFrameStyle(frameStyle)
                                 self.metacombo.setStyleSheet("background-color:#ffffff;")
                                 self.chosen = value
@@ -258,10 +261,10 @@ class AnObject(QtGui.QDialog):
                                     txt += ';' + valu
                                 txt = txt[1:]
                                 self.metacombo.setText(txt)
-                                self.connect(self.metacombo, QtCore.SIGNAL('clicked()'), self.comboSelected)
+                                self.metacombo.clicked.connect(self.comboSelected)
                                 self.edit.append(self.metacombo)
                             else:
-                                self.metacombo = QtGui.QComboBox(self)
+                                self.metacombo = QComboBox(self)
                                 j = 0
                                 for val in self.combolist[1]:
                                     if value == val:
@@ -271,7 +274,7 @@ class AnObject(QtGui.QDialog):
                                 self.metacombo.setCurrentIndex(j)
                         else:
                             if self.locnlist is not None and key == self.locnlist[0]:
-                                self.locncombo = QtGui.QComboBox(self)
+                                self.locncombo = QComboBox(self)
                                 j = 0
                                 for val in self.locnlist[1]:
                                     if value == val:
@@ -281,7 +284,7 @@ class AnObject(QtGui.QDialog):
                                 self.locncombo.setCurrentIndex(j)
                                 self.locncombo.setEditable(True)
                             else:
-        #                    self.edit.append(QtGui.QTextEdit())
+        #                    self.edit.append(QTextEdit())
                                 self.edit.append(GrowingTextEdit())
                                 self.edit[-1].resize(widths[1], rows[key][0])
                                 self.edit[-1].setPlainText(value)
@@ -292,7 +295,7 @@ class AnObject(QtGui.QDialog):
                     grid.addWidget(self.edit[-1], i + 1, 1)
                     grid.setRowMinimumHeight(grid.rowCount() - 1, rows[key][0])
                     grid.setRowStretch(grid.rowCount() - 1, rows[key][1])
-                self.edit[0].setFocusPolicy(QtCore.Qt.StrongFocus)
+                self.edit[0].setFocusPolicy(Qt.StrongFocus)
             else:
                 print('(226) Not been here before')
                 self.keys = []
@@ -300,9 +303,9 @@ class AnObject(QtGui.QDialog):
                     if value is None:
                         value = ''
                     self.field_type.append('str')
-                    label.append(QtGui.QLabel(key + ':'))
+                    label.append(QLabel(key + ':'))
                     self.keys.append(key)
-                    self.edit.append(QtGui.QLineEdit())
+                    self.edit.append(QLineEdit())
                     self.edit[-1].setText(value)
                     if i < 0:
                         metrics.append(label[-1].fontMetrics())
@@ -334,11 +337,11 @@ class AnObject(QtGui.QDialog):
                          self.field_type.append('float')
                     else:
                          self.field_type.append('str')
-                    label.append(QtGui.QLabel(prop.title() + ':'))
+                    label.append(QLabel(prop.title() + ':'))
                     if self.field_type[-1] != 'str':
-                        self.edit.append(QtGui.QLineEdit(str(attr)))
+                        self.edit.append(QLineEdit(str(attr)))
                     else:
-                        self.edit.append(QtGui.QLineEdit(attr))
+                        self.edit.append(QLineEdit(attr))
                     if i < 0:
                         metrics.append(label[-1].fontMetrics())
                         metrics.append(self.edit[-1].fontMetrics())
@@ -355,7 +358,7 @@ class AnObject(QtGui.QDialog):
                     grid.addWidget(label[-1], i + 1, 0)
                     grid.addWidget(self.edit[-1], i + 1, 1)
             self.set_stuff(grid, widths, heights, i)
-        QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quitClicked)
+        QShortcut(QKeySequence('q'), self, self.quitClicked)
 
     def quitClicked(self):
         self.anobject = None
@@ -363,12 +366,9 @@ class AnObject(QtGui.QDialog):
 
     def comboSelected(self):
         chosen = selectMulti(self.combolist[1], self.chosen, self.combolist[0])
-     #   chosen.setWindowModality(QtCore.Qt.WindowModal)
-        chosen.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-    #    chosen.activateWindow()
-   #     self.setWindowFlags(QtCore.Qt.WindowStaysOnBottomHint)
+        chosen.setWindowModality(Qt.WindowModal)
+        chosen.setWindowFlags(Qt.WindowStaysOnTopHint)
         chosen.exec_()
-   #     self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         selected = chosen.getValues()
         del chosen
         if selected is None:
@@ -425,78 +425,81 @@ class AnObject(QtGui.QDialog):
         return self.anobject
 
 
-class ClickableQLabel(QtGui.QLabel):
+class ClickableQLabel(QLabel):
+    clicked=pyqtSignal()
     def __init(self, parent):
         QLabel.__init__(self, parent)
 
     def mousePressEvent(self, event):
-        QtGui.QApplication.widgetAt(event.globalPos()).setFocus()
-        self.emit(QtCore.SIGNAL('clicked()'))
+        QApplication.widgetAt(event.globalPos()).setFocus()
+        self.clicked.emit()
 
 
-class selectMulti(QtGui.QDialog):
+class selectMulti(QDialog):
     def __init__(self, combos, chosen, multi):
         super(selectMulti, self).__init__()
         self.combos = combos
         self.chosen = chosen
-        self.grid = QtGui.QGridLayout()
+        self.grid = QGridLayout()
 #       use this if you want a checkbox
 #        j = 0
 #        self.checkbox = []
-#        self.checkbox.append(QtGui.QCheckBox('Check / Uncheck all', self))
+#        self.checkbox.append(QCheckBox('Check / Uncheck all', self))
 #        self.grid.addWidget(self.checkbox[-1], 0, 0)
 #        i = 0
 #        c = 0
 #        for combo in sorted(self.combos):
-#            self.checkbox.append(QtGui.QCheckBox(combo, self))
+#            self.checkbox.append(QCheckBox(combo, self))
 #            if combo in chosen:
-#                self.checkbox[-1].setCheckState(QtCore.Qt.Checked)
+#                self.checkbox[-1].setCheckState(Checked)
 #            i += 1
 #            self.grid.addWidget(self.checkbox[-1], i, c)
 #            if i > 25:
 #                i = 0
 #                c += 1
-#        self.grid.connect(self.checkbox[0], QtCore.SIGNAL('stateChanged(int)'), self.check_all)
-#        selectc = QtGui.QPushButton('Select', self)
+#        self.checkbox[0].stateChanged.connect(self.check_all)
+#        selectc = QPushButton('Select', self)
 #        selectc.clicked.connect(self.selectcClicked)
 #        self.grid.addWidget(select, i + 1, c)
-        self.multiListBox = QtGui.QListWidget()
-        self.multiListBox.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        self.multiListBox = QListWidget()
+     #   self.multiListBox.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.multiListBox.setSelectionMode(QAbstractItemView.MultiSelection)
         i = 0
         for combo in sorted(self.combos):
             self.multiListBox.addItem(combo)
             if combo in chosen:
-                self.multiListBox.setItemSelected(self.multiListBox.item(i), True)
+             #   self.multiListBox.setItemSelected(self.multiListBox.item(i), True)
+                self.multiListBox.item(i).setSelected(True)
             i += 1
         j = int((self.multiListBox.fontMetrics().height() + 2.5) * i - self.multiListBox.sizeHint().height())
         self.multiListBox.resize(self.multiListBox.sizeHint().width(), self.multiListBox.fontMetrics().height() * i)
         self.grid.addWidget(self.multiListBox, 0, 0)
-        selectl = QtGui.QPushButton('Select', self)
+        selectl = QPushButton('Select', self)
         selectl.clicked.connect(self.selectlClicked)
         self.grid.addWidget(selectl, 1, 0)
         self.setLayout(self.grid)
         if j > 0:
-            h1 = QtGui.QDesktopWidget().availableGeometry().height() * 0.85
+            h1 = QDesktopWidget().availableGeometry().height() * 0.85
             h = self.sizeHint().height() + j
             if h > h1:
                 h = h1
             self.resize(self.sizeHint().width(), h)
         self.setWindowTitle('Choose ' + multi + ' values')
-        QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quitClicked)
-    #    self.setWindowState(self.windowState() & QtCore.Qt.WindowActive)
+        QShortcut(QKeySequence('q'), self, self.quitClicked)
+      #  self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.setWindowState(self.windowState() & Qt.WindowActive)
         self.activateWindow()
-    #    self.setWindowFlags(Qt.Qt.WindowStaysOnTopHint)
-        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.show_them = False
+        self.setGeometry(100, 100, self.width(), self.height())
         self.show()
 
     def check_all(self):
         if self.checkbox[0].isChecked():
             for i in range(len(self.checkbox)):
-                self.checkbox[i].setCheckState(QtCore.Qt.Checked)
+                self.checkbox[i].setCheckState(Checked)
         else:
             for i in range(len(self.checkbox)):
-                self.checkbox[i].setCheckState(QtCore.Qt.Unchecked)
+                self.checkbox[i].setCheckState(Unchecked)
 
     def closeEvent(self, event):
         if not self.show_them:
@@ -509,7 +512,7 @@ class selectMulti(QtGui.QDialog):
 #    def selectcClicked(self):
 #        self.chosen = []
 #        for combo in range(1, len(self.checkbox)):
-#            if self.checkbox[combo].checkState() == QtCore.Qt.Checked:
+#            if self.checkbox[combo].checkState() == Checked:
 #                self.chosen.append(str(self.checkbox[combo].text()))
 #        self.show_them = True
 #        self.close()

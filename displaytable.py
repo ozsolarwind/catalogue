@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019 Angus King
+#  Copyright (C) 2019-2020 Angus King
 #
 #  displaytable.py - This file is part of catalogue.
 #
@@ -20,8 +20,10 @@
 #
 
 import os
-from PyQt4 import QtCore
-from PyQt4 import QtGui
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+import xlwt
 
 import displayobject
 
@@ -46,8 +48,9 @@ class FakeObject:
                 setattr(self, fields[f], fake_object[i])
 
 
-class Table(QtGui.QDialog):
-    def __init__(self, objects, parent=None, fields=None, title=None, edit=False, decpts=None, sortby=None):
+class Table(QDialog):
+    def __init__(self, objects, parent=None, fields=None, title=None, edit=False, decpts=None,
+                 sortby=None, save_folder=None):
         super(Table, self).__init__(parent)
         if isinstance(objects, list):
             self.ois = 'list'
@@ -60,13 +63,12 @@ class Table(QtGui.QDialog):
                     fakes.append(FakeObject(row, fields))
             self.objects = fakes
         elif len(objects) == 0:
-            buttonLayout = QtGui.QVBoxLayout()
-            buttonLayout.addWidget(QtGui.QLabel('Nothing to display.'))
-            self.quitButton = QtGui.QPushButton(self.tr('&Quit'))
+            buttonLayout = QVBoxLayout()
+            buttonLayout.addWidget(QLabel('Nothing to display.'))
+            self.quitButton = QPushButton(self.tr('&Quit'))
             buttonLayout.addWidget(self.quitButton)
-            self.connect(self.quitButton, QtCore.SIGNAL('clicked()'),
-                        self.quit)
-            QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quit)
+            self.quitButton.clicked.connect(self.quit)
+            QShortcut(QKeySequence('q'), self, self.quit)
             self.setLayout(buttonLayout)
             return
         elif isinstance(objects, tuple):
@@ -109,6 +111,7 @@ class Table(QtGui.QDialog):
             self.title_word = ['Edit', 'Export']
         else:
             self.title_word = ['Display', 'Save']
+        self.save_folder = save_folder
         if self.title is None:
             try:
                 self.setWindowTitle(self.title_word[0] + ' ' + self.fields[0] + ' values')
@@ -116,31 +119,27 @@ class Table(QtGui.QDialog):
                 self.setWindowTitle(self.title_word[0] + ' values')
         else:
             self.setWindowTitle(self.title)
-        self.setWindowIcon(QtGui.QIcon('books.png'))
+        self.setWindowIcon(QIcon('books.png'))
         msg = '(Right click column header to sort)'
-        buttonLayout = QtGui.QHBoxLayout()
-        self.message = QtGui.QLabel(msg)
-        self.quitButton = QtGui.QPushButton(self.tr('&Quit'))
+        buttonLayout = QHBoxLayout()
+        self.message = QLabel(msg)
+        self.quitButton = QPushButton(self.tr('&Quit'))
         buttonLayout.addWidget(self.quitButton)
-        self.connect(self.quitButton, QtCore.SIGNAL('clicked()'),
-                    self.quit)
+        self.quitButton.clicked.connect(self.quit)
         if self.edit_table:
-            self.addButton = QtGui.QPushButton(self.tr('Add'))
+            self.addButton = QPushButton(self.tr('Add'))
             buttonLayout.addWidget(self.addButton)
-            self.connect(self.addButton, QtCore.SIGNAL('clicked()'),
-                         self.addtotbl)
-            self.replaceButton = QtGui.QPushButton(self.tr('Save'))
+            self.addButton.clicked.connect(self.addtotbl)
+            self.replaceButton = QPushButton(self.tr('Save'))
             buttonLayout.addWidget(self.replaceButton)
-            self.connect(self.replaceButton, QtCore.SIGNAL('clicked()'),
-                        self.replacetbl)
-        self.saveButton = QtGui.QPushButton(self.tr(self.title_word[1]))
-        buttonLayout.addWidget(self.saveButton)
-        self.connect(self.saveButton, QtCore.SIGNAL('clicked()'),
-                    self.saveit)
-        buttons = QtGui.QFrame()
+            self.replaceButton.clicked.connect(self.replacetbl)
+            self.saveButton = QPushButton(self.tr(self.title_word[1]))
+            buttonLayout.addWidget(self.saveButton)
+            self.saveButton.clicked.connect(self.saveit)
+        buttons = QFrame()
         buttons.setLayout(buttonLayout)
-        layout = QtGui.QGridLayout()
-        self.table = QtGui.QTableWidget()
+        layout = QGridLayout()
+        self.table = QTableWidget()
         self.populate()
         self.table.setRowCount(len(self.entry))
         self.table.setColumnCount(len(self.labels))
@@ -150,22 +149,22 @@ class Table(QtGui.QDialog):
             labels = self.fields
         self.table.setHorizontalHeaderLabels(labels)
         for cl in range(self.table.columnCount()):
-            self.table.horizontalHeaderItem(cl).setIcon(QtGui.QIcon('blank.png'))
+            self.table.horizontalHeaderItem(cl).setIcon(QIcon('blank.png'))
         self.headers = self.table.horizontalHeader()
-        self.headers.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.headers.setContextMenuPolicy(Qt.CustomContextMenu)
         self.headers.customContextMenuRequested.connect(self.header_click)
-        self.headers.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+        self.headers.setSelectionMode(QAbstractItemView.SingleSelection)
         self.rh = self.table.verticalHeader().sizeHint().height()
         if self.edit_table:
-            self.table.setEditTriggers(QtGui.QAbstractItemView.CurrentChanged)
+            self.table.setEditTriggers(QAbstractItemView.CurrentChanged)
             self.rows = self.table.verticalHeader()
-            self.rows.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+            self.rows.setContextMenuPolicy(Qt.CustomContextMenu)
             self.rows.customContextMenuRequested.connect(self.row_click)
-            self.rows.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+            self.rows.setSelectionMode(QAbstractItemView.SingleSelection)
             self.table.verticalHeader().setVisible(True)
         else:
-            self.table.setEditTriggers(QtGui.QAbstractItemView.SelectedClicked)
-            self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+            self.table.setEditTriggers(QAbstractItemView.SelectedClicked)
+            self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table, 0, 0)
         layout.addWidget(self.message, 1, 0)
         layout.addWidget(buttons, 2, 0)
@@ -183,14 +182,14 @@ class Table(QtGui.QDialog):
             width += self.table.columnWidth(cl)
         width += 50
         height = self.rh * (self.table.rowCount() + xtra_rows) + 200
-        screen = QtGui.QDesktopWidget().availableGeometry()
+        screen = QDesktopWidget().availableGeometry()
         if height > (screen.height() - 70):
             height = screen.height() - 70
         self.setLayout(layout)
-        size = QtCore.QSize(int(width), int(height))
+        size = QSize(int(width), int(height))
         self.resize(size)
-        self.updated = QtCore.pyqtSignal(QtGui.QLabel)   # ??
-        QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quit)
+        self.updated = pyqtSignal(QLabel)   # ??
+        QShortcut(QKeySequence('q'), self, self.quit)
         if self.edit_table:
             self.table.cellChanged.connect(self.item_changed)
         else:
@@ -199,10 +198,6 @@ class Table(QtGui.QDialog):
     def populate(self):
         self.labels = {}
         self.lens = {}
-        try:
-            self.hdrs
-        except:
-            self.hdrs = {}
         if len(self.objects) == 0:
             self.entry = []
             for field in self.fields:
@@ -338,7 +333,7 @@ class Table(QtGui.QDialog):
                         orderd[' ' + self.entry[rw][self.fields[0]]] = rw
             torder = []
             if col != self.sort_col:
-                self.table.horizontalHeaderItem(self.sort_col).setIcon(QtGui.QIcon('blank.png'))
+                self.table.horizontalHeaderItem(self.sort_col).setIcon(QIcon('blank.png'))
                 self.sort_asc = False
             self.sort_col = col
             if self.sort_asc:   # swap order
@@ -347,18 +342,18 @@ class Table(QtGui.QDialog):
                 for key, value in iter(sorted(norderd.items())):
                     torder.append(value)
                 self.sort_asc = False
-                self.table.horizontalHeaderItem(col).setIcon(QtGui.QIcon('arrowd.png'))
+                self.table.horizontalHeaderItem(col).setIcon(QIcon('arrowd.png'))
             else:
                 self.sort_asc = True
                 for key, value in iter(sorted(iter(norderd.items()), reverse=True)):
                     torder.append(value)
                 for key, value in iter(sorted(orderd.items())):
                     torder.append(value)
-                self.table.horizontalHeaderItem(col).setIcon(QtGui.QIcon('arrowu.png'))
+                self.table.horizontalHeaderItem(col).setIcon(QIcon('arrowu.png'))
         self.entry = [self.entry[i] for i in torder]
         for rw in range(len(self.entry)):
             for cl in range(self.table.columnCount()):
-                self.table.setItem(rw, cl, QtGui.QTableWidgetItem(''))
+                self.table.setItem(rw, cl, QTableWidgetItem(''))
             for key, value in sorted(list(self.entry[rw].items()), key=lambda i: self.fields.index(i[0])):
                 cl = self.fields.index(key)
                 if value is not None:
@@ -366,21 +361,21 @@ class Table(QtGui.QDialog):
                         fld = str(value[0])
                         for i in range(1, len(value)):
                             fld = fld + ',' + str(value[i])
-                        self.table.setItem(rw, cl, QtGui.QTableWidgetItem(fld))
+                        self.table.setItem(rw, cl, QTableWidgetItem(fld))
                     else:
                         if cl > 0 and self.labels[key] == 'str':
-                            value_pt = QtGui.QPlainTextEdit()
+                            value_pt = QPlainTextEdit()
                             value_pt.setPlainText(value)
                             self.table.setCellWidget(rw, cl, value_pt)
                             if value.find('\n') >= 0:
                                 self.table.setRowHeight(rw, self.rh * 2)
                                 xtra_rows += 1
                         else:
-                            self.table.setItem(rw, cl, QtGui.QTableWidgetItem(value))
+                            self.table.setItem(rw, cl, QTableWidgetItem(value))
                             if self.labels[key] != 'str':
                                 self.table.item(rw, cl).setTextAlignment(130)   # x'82'
                 if not self.edit_table:
-                    self.table.item(rw, cl).setFlags(QtCore.Qt.ItemIsEnabled)
+                    self.table.item(rw, cl).setFlags(Qt.ItemIsEnabled)
         return xtra_rows
 
     def showit(self):
@@ -392,13 +387,13 @@ class Table(QtGui.QDialog):
 
     def row_click(self, position):
         row = self.rows.logicalIndexAt(position)
-        msgbox = QtGui.QMessageBox()
+        msgbox = QMessageBox()
         msgbox.setWindowTitle('Delete item')
         msgbox.setText("Press Yes to delete '" + str(self.table.item(row, 0).text()) + "'")
-        msgbox.setIcon(QtGui.QMessageBox.Question)
-        msgbox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+        msgbox.setIcon(QMessageBox.Question)
+        msgbox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         reply = msgbox.exec_()
-        if reply == QtGui.QMessageBox.Yes:
+        if reply == QMessageBox.Yes:
             for i in range(len(self.entry)):
                 if self.entry[i][self.fields[0]] == str(self.table.item(row, 0).text()):
                     del self.entry[i]
@@ -417,7 +412,7 @@ class Table(QtGui.QDialog):
                 duplicate.append(entry[self.fields[0]])
         else:
             duplicate = None
-        dialog = displayobject.AnObject(QtGui.QDialog(), addproperty, readonly=False,
+        dialog = displayobject.AnObject(QDialog(), addproperty, readonly=False,
                  textedit=True, title='Add ' + self.fields[0].title() + ' value', duplicate=duplicate)
         try:
             dialog.edit[0].setFocus()
@@ -444,7 +439,7 @@ class Table(QtGui.QDialog):
                     self.selection = attr
                     self.close()
                     return
-                    dialog = displayobject.AnObject(QtGui.QDialog(), thing)
+                    dialog = displayobject.AnObject(QDialog(), thing)
                     dialog.exec_()
                     break
             except:
@@ -475,7 +470,7 @@ class Table(QtGui.QDialog):
                         tst = int(tst)
                         fmat_str = '{: >' + str(self.lens[self.fields[col]][0] + self.lens[self.fields[col]][1] + 1) + ',.' \
                                    + str(self.lens[self.fields[col]][1]) + 'f}'
-                        self.table.setItem(row, col, QtGui.QTableWidgetItem(fmat_str.format(tst)))
+                        self.table.setItem(row, col, QTableWidgetItem(fmat_str.format(tst)))
                         self.table.item(row, col).setTextAlignment(130)  # x'82'
                         self.recur = False
                         return
@@ -487,7 +482,7 @@ class Table(QtGui.QDialog):
                         tst = float(tst)
                         fmat_str = '{: >' + str(self.lens[self.fields[col]][0] + self.lens[self.fields[col]][1] + 1) + ',.' \
                                    + str(self.lens[self.fields[col]][1]) + 'f}'
-                        self.table.setItem(row, col, QtGui.QTableWidgetItem(fmat_str.format(tst)))
+                        self.table.setItem(row, col, QTableWidgetItem(fmat_str.format(tst)))
                         self.table.item(row, col).setTextAlignment(130)  # x'82'
                         self.recur = False
                         return
@@ -497,8 +492,8 @@ class Table(QtGui.QDialog):
         msg_font = self.message.font()
         msg_font.setBold(True)
         self.message.setFont(msg_font)
-        msg_palette = QtGui.QPalette()
-        msg_palette.setColor(QtGui.QPalette.Foreground, QtCore.Qt.red)
+        msg_palette = QPalette()
+        msg_palette.setColor(QPalette.Foreground, red)
         self.message.setPalette(msg_palette)
         self.table.resizeRowsToContents()
 
@@ -511,9 +506,9 @@ class Table(QtGui.QDialog):
         else:
             iam = self.title
         data_file = '%s_Table_%s.xls' % (iam,
-                    str(QtCore.QDateTime.toString(QtCore.QDateTime.currentDateTime(), 'yyyy-MM-dd_hhmm')))
-        data_file = QtGui.QFileDialog.getSaveFileName(None, 'Save ' + iam + ' Table',
-                    self.save_folder + data_file, 'Excel Files (*.xls*);;CSV Files (*.csv)')
+                    str(QDateTime.toString(QDateTime.currentDateTime(), 'yyyy-MM-dd_hhmm')))
+        data_file = QFileDialog.getSaveFileName(None, 'Save ' + iam + ' Table',
+                    self.save_folder + data_file, 'Excel Files (*.xls*);;CSV Files (*.csv)')[0]
         if data_file == '':
             return
         data_file = str(data_file)
@@ -533,17 +528,14 @@ class Table(QtGui.QDialog):
                 if cl > 0:
                     line += ','
                 hdr = str(self.table.horizontalHeaderItem(cl).text())
-                if hdr[0] != '%':
-                    txt = hdr
-                    if ',' in txt:
-                        line += '"' + txt + '"'
-                    else:
-                        line += txt
-                txt = self.hdrs[hdr]
+                if ',' in hdr:
+                    line += '"' + hdr + '"'
+                else:
+                    line += hdr
                 try:
-                    hdr_types.append(self.labels[txt.lower()])
+                    hdr_types.append(self.labels[hdr.lower()])
                 except:
-                    hdr_types.append(self.labels[txt])
+                    hdr_types.append(self.labels[hdr])
             tf.write(line + '\n')
             for rw in range(self.table.rowCount()):
                 line = ''
@@ -579,7 +571,7 @@ class Table(QtGui.QDialog):
                 hdr = str(self.table.horizontalHeaderItem(cl).text())
                 if hdr[0] != '%':
                     ws.write(0, cl, hdr)
-                txt = self.hdrs[hdr]
+                txt = hdr
                 try:
                     hdr_types.append(self.labels[txt.lower()])
                     txt = txt.lower()
@@ -626,7 +618,8 @@ class Table(QtGui.QDialog):
             ws.set_remove_splits(True)   # if user does unfreeze, don't leave a split there
             wb.save(data_file)
             self.savedfile = data_file
-        self.close()
+        if not self.edit_table:
+            self.close()
 
     def replacetbl(self):
         if self.message.text() != ' ' and self.message.text()[0] != '(':

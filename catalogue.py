@@ -26,7 +26,9 @@ try:
     import pwd
 except:
     pass
-from PyQt4 import QtCore, QtGui
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 import sqlite3
 from sqlite3 import Error
 import sys
@@ -39,13 +41,13 @@ import displaytable
 from functions import *
 
 
-class TabDialog(QtGui.QMainWindow):
+class TabDialog(QMainWindow):
 
     def wheelEvent(self, event):
         if len(self.rows) == 0:
             return
         self.wrapmsg.setText('')
-        if event.delta() < 0:
+        if event.angleDelta().y() < 0:
             self.row += 1
             if self.row >= len(self.rows):
                 self.row = 0
@@ -61,19 +63,19 @@ class TabDialog(QtGui.QMainWindow):
         self.getRows()
 
     def __init__(self, parent=None):
-        QtGui.QMainWindow.__init__(self, parent)
+        QMainWindow.__init__(self, parent)
         self.find_file = False
         self.conn = None
         self.db = None
         self.dbs = configFile()
         self.last_locn = '' # remember last location when adding books
-        self.cattitle = QtGui.QLabel('')
-        self.items = QtGui.QLabel('')
-        self.metacombo = QtGui.QComboBox(self)
+        self.cattitle = QLabel('')
+        self.items = QLabel('')
+        self.metacombo = QComboBox(self)
         self.category = 'Category'
-        self.catcombo = QtGui.QComboBox(self)
+        self.catcombo = QComboBox(self)
         self.catcombo.setHidden(True)
-        self.attr_cat = QtGui.QAction(QtGui.QIcon('copy.png'), self.category, self)
+        self.attr_cat = QAction(QIcon('copy.png'), self.category, self)
         self.attr_cat.setShortcut('Ctrl+C')
         self.attr_cat.setStatusTip('Edit category values')
         self.attr_cat.triggered.connect(self.editFields)
@@ -85,98 +87,98 @@ class TabDialog(QtGui.QMainWindow):
         self.me = '/' + sys.argv[0][:sys.argv[0].rfind('.')]
         self.me = self.me[self.me.rfind('/') + 1:].title()
         self.setWindowTitle(self.me + ' (' + fileVersion() + ') - Simple Catalogue')
-        self.setWindowIcon(QtGui.QIcon('books.png'))
-        buttonLayout = QtGui.QHBoxLayout()
-        quitButton = QtGui.QPushButton(self.tr('&Quit'))
+        self.setWindowIcon(QIcon('books.png'))
+        buttonLayout = QHBoxLayout()
+        quitButton = QPushButton(self.tr('&Quit'))
         buttonLayout.addWidget(quitButton)
-        self.connect(quitButton, QtCore.SIGNAL('clicked()'), self.quit)
-        QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quit)
-        addButton = QtGui.QPushButton(self.tr('&Add Item'))
+        quitButton.clicked.connect(self.quit)
+        QShortcut(QKeySequence('q'), self, self.quit)
+        addButton = QPushButton(self.tr('&Add Item'))
         buttonLayout.addWidget(addButton)
-        self.connect(addButton, QtCore.SIGNAL('clicked()'), self.addItem)
-        addfile = QtGui.QPushButton(self.tr('&Add File'))
+        addButton.clicked.connect(self.addItem)
+        addfile = QPushButton(self.tr('&Add File'))
         buttonLayout.addWidget(addfile)
-        self.connect(addfile, QtCore.SIGNAL('clicked()'), self.addFile)
-        addfiles = QtGui.QPushButton(self.tr('&Add Files'))
+        addfile.clicked.connect(self.addFile)
+        addfiles = QPushButton(self.tr('&Add Files'))
         buttonLayout.addWidget(addfiles)
-        self.connect(addfiles, QtCore.SIGNAL('clicked()'), self.addFiles)
-        self.addisbn = QtGui.QPushButton(self.tr('&Add ISBN'))
+        addfiles.clicked.connect(self.addFiles)
+        self.addisbn = QPushButton(self.tr('&Add ISBN'))
         buttonLayout.addWidget(self.addisbn)
-        self.connect(self.addisbn, QtCore.SIGNAL('clicked()'), self.addISBN)
+        self.addisbn.clicked.connect(self.addISBN)
         if self.isbn_field == '':
             self.addisbn.setVisible(False)
-        QtGui.QShortcut(QtGui.QKeySequence('pgdown'), self, self.nextRows)
-        QtGui.QShortcut(QtGui.QKeySequence('pgup'), self, self.prevRows)
-        buttons = QtGui.QFrame()
+        QShortcut(QKeySequence('pgdown'), self, self.nextRows)
+        QShortcut(QKeySequence('pgup'), self, self.prevRows)
+        buttons = QFrame()
         buttons.setLayout(buttonLayout)
-        layout = QtGui.QGridLayout()
+        layout = QGridLayout()
         layout.setVerticalSpacing(10)
-        layout.addWidget(QtGui.QLabel('Catalogue:'), 0, 0)
+        layout.addWidget(QLabel('Catalogue:'), 0, 0)
         layout.addWidget(self.cattitle, 0, 1, 1, 2)
         layout.addWidget(self.items, 0, 4)
-        layout.addWidget(QtGui.QLabel('Search by'), 1, 0)
+        layout.addWidget(QLabel('Search by'), 1, 0)
         layout.addWidget(self.metacombo, 1, 1)
-        self.search = QtGui.QLineEdit()
-        self.filter = QtGui.QComboBox(self)
+        self.search = QLineEdit()
+        self.filter = QComboBox(self)
         self.filter.addItem('equals')
         self.filter.addItem('starts with')
         self.filter.addItem('contains')
         self.filter.addItem('missing')
         self.filter.addItem('duplicate')
-        self.filter.setCurrentIndex(1)
+        self.filter.setCurrentIndex(2)
         layout.addWidget(self.filter, 1, 2)
         layout.addWidget(self.catcombo, 1, 3)
         layout.addWidget(self.search, 1, 3)
-        srchb = QtGui.QPushButton('Search')
+        srchb = QPushButton('Search')
         layout.addWidget(srchb, 1, 4)
-        self.connect(srchb, QtCore.SIGNAL('clicked()'), self.do_search)
-        enter = QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Return), self)
+        srchb.clicked.connect(self.do_search)
+        enter = QShortcut(QKeySequence('Return'), self)
         enter.activated.connect(self.do_search)
         layout.addWidget(buttons, 2, 0, 1, 2)
-        msgLayout = QtGui.QHBoxLayout()
-        msgLayout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.wrapmsg = QtGui.QLabel('')
+        msgLayout = QHBoxLayout()
+        msgLayout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.wrapmsg = QLabel('')
         msg_font = self.wrapmsg.font()
         msg_font.setBold(True)
         self.wrapmsg.setFont(msg_font)
-        msg_palette = QtGui.QPalette()
-        msg_palette.setColor(QtGui.QPalette.Foreground, QtCore.Qt.red)
+        msg_palette = QPalette()
+        msg_palette.setColor(QPalette.Foreground, Qt.red)
         self.wrapmsg.setPalette(msg_palette)
         msgLayout.addWidget(self.wrapmsg)
-        msgLayout.addWidget(QtGui.QLabel('Rows per page:'))
-        self.pagerows = QtGui.QSpinBox()
+        msgLayout.addWidget(QLabel('Rows per page:'))
+        self.pagerows = QSpinBox()
         msgLayout.addWidget(self.pagerows)
-        self.srchrng = QtGui.QLabel('')
-        self.srchrng.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.srchrng = QLabel('')
+        self.srchrng.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         msgLayout.addWidget(self.srchrng)
-        self.srchmsg = QtGui.QLabel('')
+        self.srchmsg = QLabel('')
         msgLayout.addWidget(self.srchmsg)
-        msgs = QtGui.QFrame()
+        msgs = QFrame()
         msgs.setLayout(msgLayout)
         layout.addWidget(msgs, 2, 2, 1, 3)
         layout.setColumnStretch(3, 10)
-        menubar = QtGui.QMenuBar()
+        menubar = QMenuBar()
         layout.setMenuBar(menubar)
-        db_opn = QtGui.QAction(QtGui.QIcon('open.png'), 'Open', self)
+        db_opn = QAction(QIcon('open.png'), 'Open', self)
         db_opn.setShortcut('Ctrl+O')
         db_opn.setStatusTip('Open Catalogue')
         db_opn.triggered.connect(self.openDB)
-        db_add = QtGui.QAction(QtGui.QIcon('plus.png'), 'Add', self)
+        db_add = QAction(QIcon('plus.png'), 'Add', self)
         db_add.setShortcut('Ctrl+A')
         db_add.setStatusTip('Add Catalogue')
         db_add.triggered.connect(self.addDB)
-        db_new = QtGui.QAction(QtGui.QIcon('books.png'), 'New', self)
+        db_new = QAction(QIcon('books.png'), 'New', self)
         db_new.setShortcut('Ctrl+N')
         db_new.setStatusTip('Create Catalogue')
         db_new.triggered.connect(self.newDB)
-        db_lod = QtGui.QAction(QtGui.QIcon('load.png'), 'Load', self)
+        db_lod = QAction(QIcon('load.png'), 'Load', self)
         db_lod.setShortcut('Ctrl+L')
         db_lod.setStatusTip('Load Catalogue')
         db_lod.triggered.connect(self.loadDB)
-        db_rem = QtGui.QAction(QtGui.QIcon('cancel.png'), 'Remove', self)
+        db_rem = QAction(QIcon('cancel.png'), 'Remove', self)
         db_rem.setStatusTip('Remove Catalogue')
         db_rem.triggered.connect(self.remDB)
-        db_qui = QtGui.QAction(QtGui.QIcon('quit.png'), 'Quit', self)
+        db_qui = QAction(QIcon('quit.png'), 'Quit', self)
         db_qui.setShortcut('Ctrl+Q')
         db_qui.setStatusTip('Quit')
         db_qui.triggered.connect(self.quit)
@@ -188,15 +190,15 @@ class TabDialog(QtGui.QMainWindow):
         dbMenu.addAction(db_rem)
         dbMenu.addAction(db_qui)
         attrMenu = menubar.addMenu('&Attributes')
-        attr_inf = QtGui.QAction(QtGui.QIcon('edit.png'), 'Info', self)
+        attr_inf = QAction(QIcon('edit.png'), 'Info', self)
         attr_inf.setShortcut('Ctrl+E')
         attr_inf.setStatusTip('Edit Catalogue info')
         attr_inf.triggered.connect(self.editFields)
-        attr_met = QtGui.QAction(QtGui.QIcon('list.png'), 'Meta', self)
+        attr_met = QAction(QIcon('list.png'), 'Meta', self)
         attr_met.setShortcut('Ctrl+M')
         attr_met.setStatusTip('Edit Meta values')
         attr_met.triggered.connect(self.editFields)
-        attr_set = QtGui.QAction(QtGui.QIcon('edit.png'), 'Settings', self)
+        attr_set = QAction(QIcon('edit.png'), 'Settings', self)
         attr_set.setShortcut('Ctrl+S')
         attr_set.setStatusTip('Edit Catalogue setting')
         attr_set.triggered.connect(self.editFields)
@@ -204,11 +206,11 @@ class TabDialog(QtGui.QMainWindow):
         attrMenu.addAction(attr_inf)
         attrMenu.addAction(attr_met)
         attrMenu.addAction(attr_set)
-        help = QtGui.QAction(QtGui.QIcon('help.png'), 'Help', self)
+        help = QAction(QIcon('help.png'), 'Help', self)
         help.setShortcut('F1')
         help.setStatusTip('Help')
         help.triggered.connect(self.showHelp)
-        about = QtGui.QAction(QtGui.QIcon('info.png'), 'About', self)
+        about = QAction(QIcon('info.png'), 'About', self)
         about.setShortcut('Ctrl+I')
         about.setStatusTip('About')
         about.triggered.connect(self.showAbout)
@@ -219,11 +221,11 @@ class TabDialog(QtGui.QMainWindow):
         toplen = 50 + buttonLayout.sizeHint().height() + msgLayout.sizeHint().height() + \
                  dbMenu.geometry().height() + layout.sizeHint().height() + \
                  layout.verticalSpacing() * 3 + 10
-        self.table = QtGui.QTableWidget()
+        self.table = QTableWidget()
         self.table.setRowCount(1)
-        self.table.setItem(0, 0, QtGui.QTableWidgetItem(''))
+        self.table.setItem(0, 0, QTableWidgetItem(''))
         rh = self.table.rowHeight(0)
-        screen = QtGui.QDesktopWidget().availableGeometry()
+        screen = QDesktopWidget().availableGeometry()
         table_rows = int((screen.height() - toplen) / rh)
         self.pagerows.setRange(1, table_rows)
         self.pagerows.setValue(table_rows)
@@ -234,25 +236,29 @@ class TabDialog(QtGui.QMainWindow):
         self.table.setColumnWidth(1, 0)
         self.table.setColumnWidth(2, 800)
         self.table.setColumnWidth(3, 200)
-        self.table.setEditTriggers(QtGui.QAbstractItemView.SelectedClicked)
-        self.table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-  #      self.table.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.table.setEditTriggers(QAbstractItemView.SelectedClicked)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+  #      self.table.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
         rows = self.table.verticalHeader()
-        rows.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        rows.setContextMenuPolicy(Qt.CustomContextMenu)
         rows.customContextMenuRequested.connect(self.row_click)
-        rows.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+        rows.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.verticalHeader().setVisible(True)
         self.table.cellClicked.connect(self.item_selected)
         layout.addWidget(self.table, 3, 0, 1, 5)
-        centralWidget = QtGui.QWidget(self)
-        size = QtCore.QSize(screen.width() - 50, screen.height() - 50)
+        centralWidget = QWidget(self)
+        size = QSize(screen.width() - 50, screen.height() - 50)
         centralWidget.setMaximumSize(size)
         self.setCentralWidget(centralWidget)
         centralWidget.setLayout(layout)
         self.metacombo.currentIndexChanged.connect(self.metaChanged)
         self.catcombo.currentIndexChanged.connect(self.catChanged)
-        size = QtCore.QSize(min(screen.width() - 50, 1100), screen.height() - 50)
+        size = QSize(min(screen.width() - 50, 1100), screen.height() - 50)
         self.resize(size)
+        goto_top = QShortcut(QKeySequence('Ctrl+Home'), self)
+        goto_top.activated.connect(lambda: self.nextRows(top=True))
+        goto_end = QShortcut(QKeySequence('Ctrl+End'), self)
+        goto_end.activated.connect(lambda: self.prevRows(bottom=True))
         if self.conn is not None:
             self.updDetails()
             self.do_search()
@@ -279,8 +285,8 @@ class TabDialog(QtGui.QMainWindow):
 
     def addDB(self):
         db_file = 'catalogue.db'
-        db_file = QtGui.QFileDialog.getOpenFileName(None, 'Add Catalogue',
-                  db_file, 'Database Files (*.db)')
+        db_file = QFileDialog.getOpenFileName(None, 'Add Catalogue',
+                  db_file, 'Database Files (*.db)')[0]
         if db_file == '':
             return
         if self.conn is not None:
@@ -303,12 +309,12 @@ class TabDialog(QtGui.QMainWindow):
                     self.conn.close()
             dell = '.'
             if os.path.exists(db):
-                msgbox = QtGui.QMessageBox()
+                msgbox = QMessageBox()
                 msgbox.setText('Do you want to DELETE the database (Y)?')
-                msgbox.setIcon(QtGui.QMessageBox.Question)
-                msgbox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+                msgbox.setIcon(QMessageBox.Question)
+                msgbox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
                 reply = msgbox.exec_()
-                if reply == QtGui.QMessageBox.Yes:
+                if reply == QMessageBox.Yes:
                     os.remove(db)
                     dell = ' and deleted.'
             for f in range(len(self.dbs)):
@@ -322,8 +328,8 @@ class TabDialog(QtGui.QMainWindow):
 
     def newDB(self):
         db_file = 'catalogue.db'
-        db_file = QtGui.QFileDialog.getSaveFileName(None, 'Create Catalogue',
-                  db_file, 'Database Files (*.db)')
+        db_file = QFileDialog.getSaveFileName(None, 'Create Catalogue',
+                  db_file, 'Database Files (*.db)')[0]
         if db_file == '':
             return
         conn = create_catalogue(db_file)
@@ -335,14 +341,17 @@ class TabDialog(QtGui.QMainWindow):
         self.conn = create_connection(db_file)
         self.db = db_file
         self.updDetails()
+        self.table.clear()
+        self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category])
+        self.rows = 0
         if db_file not in self.dbs:
             self.dbs.append(db_file)
         self.wrapmsg.setText('Catalogue created')
         self.loadDB()
 
     def loadDB(self):
-        data_file = QtGui.QFileDialog.getOpenFileName(None, 'Choose data to load',
-                  '', 'Excel Files (*.xls*);;CSV files (*.csv)')
+        data_file = QFileDialog.getOpenFileName(None, 'Choose data to load',
+                  '', 'Excel Files (*.xls*);;CSV files (*.csv)')[0]
         if data_file == '':
             return
         message = load_catalogue(self, self.db, data_file)
@@ -409,7 +418,7 @@ class TabDialog(QtGui.QMainWindow):
         cur.execute("select count(*) from items")
         cnt = cur.fetchone()[0]
         if cnt > 0:
-            self.items.setText('(' + str(cnt) + ' items)')
+            self.items.setText('({:,d} items)'.format(cnt))
         else:
             self.items.setText('')
         self.metacombo.clear()
@@ -446,7 +455,9 @@ class TabDialog(QtGui.QMainWindow):
             fields.append('Value')
         else:
             fields.append('Description')
-        dialog = displaytable.Table(rows, fields=fields, edit=True)
+        folder = self.db[:self.db.rfind('/') + 1]
+        dialog = displaytable.Table(rows, fields=fields, title=self.sender().text(), edit=True,
+                                    save_folder=folder)
         dialog.exec_()
         if dialog.getValues() is None:
             return
@@ -489,20 +500,20 @@ class TabDialog(QtGui.QMainWindow):
                 updcur.execute(sql, (row[0], ))
                 i = updcur.fetchone()[0]
                 if i > 0:
-                    msgbox = QtGui.QMessageBox()
+                    msgbox = QMessageBox()
                     msgbox.setWindowTitle('Delete ' + self.sender().text() + ' value')
                     msgbox.setText(str(i) + ' rows for ' + row[0] \
                                    + '. Do you still want to delete it?')
-                    msgbox.setIcon(QtGui.QMessageBox.Question)
-                    msgbox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+                    msgbox.setIcon(QMessageBox.Question)
+                    msgbox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
                     reply = msgbox.exec_()
-                if i == 0 or reply == QtGui.QMessageBox.Yes:
+                if i == 0 or reply == QMessageBox.Yes:
                    sql = "delete from fields where typ = ? and field = ?"
                    updcur.execute(sql, (self.sender().text(), row[0]))
                    if i > 0:
                        msgbox.setText('Do you want to delete the Meta rows?')
                        reply = msgbox.exec_()
-                       if reply == QtGui.QMessageBox.Yes:
+                       if reply == QMessageBox.Yes:
                            sql = "delete from meta where field = ?"
                            updcur.execute(sql, (row[0], ))
                    if row[0].upper() == self.url_field:
@@ -544,8 +555,8 @@ class TabDialog(QtGui.QMainWindow):
     def addFile(self):
         if self.conn is None:
             return
-        new_file = QtGui.QFileDialog.getOpenFileName(None, 'Add File',
-                   self.db[:self.db.rfind('/')], 'All Files (*.*)')
+        new_file = QFileDialog.getOpenFileName(None, 'Add File',
+                   self.db[:self.db.rfind('/')], 'All Files (*.*)')[0]
         if new_file == '':
             return
         properties = {}
@@ -565,9 +576,9 @@ class TabDialog(QtGui.QMainWindow):
     def addFiles(self):
         if self.conn is None:
             return
-        folder = QtGui.QFileDialog.getExistingDirectory(None,
+        folder = QFileDialog.getExistingDirectory(None,
                  'Folder to start searching for files',
-                 self.db[:self.db.rfind('/')], QtGui.QFileDialog.ShowDirsOnly)
+                 self.db[:self.db.rfind('/')], QFileDialog.ShowDirsOnly)
         if folder == '':
             return
         filetypes = ['pdf', 'html', 'doc', 'docx', 'xls', 'xlsx']
@@ -632,8 +643,8 @@ class TabDialog(QtGui.QMainWindow):
     def addISBN(self):
         if self.conn is None:
             return
-        isbn, ok = QtGui.QInputDialog.getText(None, 'Get ISBN Details', 'Enter ISBN:',
-                   QtGui.QLineEdit.Normal, '978')
+        isbn, ok = QInputDialog.getText(None, 'Get ISBN Details', 'Enter ISBN:',
+                   QLineEdit.Normal, '978')
         if not ok:
             return
         cur = self.conn.cursor()
@@ -642,13 +653,13 @@ class TabDialog(QtGui.QMainWindow):
         row = cur.fetchone()
         cur.close()
         if row is not None:
-            msgbox = QtGui.QMessageBox()
+            msgbox = QMessageBox()
             msgbox.setWindowTitle('Add ISBN')
             msgbox.setText('ISBN ' + isbn + ' in Catalogue. Press Yes to add a duplicate')
-            msgbox.setIcon(QtGui.QMessageBox.Question)
-            msgbox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+            msgbox.setIcon(QMessageBox.Question)
+            msgbox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             reply = msgbox.exec_()
-            if reply != QtGui.QMessageBox.Yes:
+            if reply != QMessageBox.Yes:
                 return
         properties = getISBNInfo(isbn, self.conn)
         if len(properties) > 1: # got some stuff
@@ -657,7 +668,7 @@ class TabDialog(QtGui.QMainWindow):
             except:
                 properties['Notes'] = '(info derived from openlibrary.org)'
         else:
-            QtGui.QApplication.clipboard().setText(isbn)
+            QApplication.clipboard().setText(isbn)
         self.addItem(properties=properties)
 
     def addItem(self, properties=None):
@@ -699,7 +710,7 @@ class TabDialog(QtGui.QMainWindow):
                 row = cur.fetchone()
         else:
             locnlist = None
-        dialog = displayobject.AnObject(QtGui.QDialog(), addproperty, readonly=False,
+        dialog = displayobject.AnObject(QDialog(), addproperty, readonly=False,
                  textedit=True, title='Add Item', combolist=combolist, multi=self.category_multi,
                  locnlist=locnlist)
         dialog.exec_()
@@ -736,7 +747,7 @@ class TabDialog(QtGui.QMainWindow):
         cur.execute("select count(*) from items")
         cnt = cur.fetchone()[0]
         if cnt > 0:
-            self.items.setText('(' + str(cnt) + ' items)')
+            self.items.setText('({:,d} items)'.format(cnt))
         else:
             self.items.setText('')
         cur.close()
@@ -754,7 +765,7 @@ class TabDialog(QtGui.QMainWindow):
                 self.catcombo.addItem(row[0])
                 row = cur.fetchone()
             cur.close()
-            self.filter.setCurrentIndex(0)
+            self.filter.setCurrentIndex(2) # contains
             self.search.setHidden(True)
             self.catcombo.setHidden(False)
         else:
@@ -863,7 +874,7 @@ class TabDialog(QtGui.QMainWindow):
                     self.rows.append(row[0])
                 row = cur.fetchone()
         cur.close()
-        self.srchmsg.setText(str(len(self.rows)) + ' items')
+        self.srchmsg.setText('{:,d} items'.format(len(self.rows)))
         self.srchrng.setText('')
         self.table.clear()
         self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category])
@@ -898,18 +909,18 @@ class TabDialog(QtGui.QMainWindow):
                 cur.execute(sql1, (self.rows[self.row + trw], self.url_field))
                 urow = cur.fetchone()
                 if urow is not None:
-                    button = QtGui.QPushButton('', self.table)
-                    button.setIcon(QtGui.QIcon('url.png'))
+                    button = QPushButton('', self.table)
+                    button.setIcon(QIcon('url.png'))
                     button.setFlat(True)
                     self.table.setCellWidget(trw, 0, button)
                     button.clicked.connect(partial(self._buttonItemClicked, trw))
             elif self.launcher != '':
-                button = QtGui.QPushButton('', self.table)
-                button.setIcon(QtGui.QIcon('open.png'))
+                button = QPushButton('', self.table)
+                button.setIcon(QIcon('open.png'))
                 button.setFlat(True)
                 self.table.setCellWidget(trw, 0, button)
                 button.clicked.connect(partial(self._buttonItemClicked, trw))
-            self.table.setItem(trw, 2, QtGui.QTableWidgetItem(row[0]))
+            self.table.setItem(trw, 2, QTableWidgetItem(row[0]))
             cur.execute(sql1, (self.rows[self.row + trw], self.category))
             txt = ''
             row = cur.fetchone()
@@ -917,7 +928,7 @@ class TabDialog(QtGui.QMainWindow):
                 txt += ';' + row[0]
                 row = cur.fetchone()
             txt = txt[1:]
-            self.table.setItem(trw, 3, QtGui.QTableWidgetItem(txt))
+            self.table.setItem(trw, 3, QTableWidgetItem(txt))
             if self.col_2:
                 if self.field in ['Filename', 'Location']:
                     cur.execute(sql2, (self.rows[self.row + trw], ))
@@ -925,26 +936,30 @@ class TabDialog(QtGui.QMainWindow):
                     cur.execute(sql1, (self.rows[self.row + trw], self.field))
                 row = cur.fetchone()
                 if row is not None:
-                    self.table.setItem(trw, 1, QtGui.QTableWidgetItem(row[0]))
-        self.srchrng.setText(str(self.row + 1) + ' to ' + str(self.row + 1 + trw) + ' of ')
+                    self.table.setItem(trw, 1, QTableWidgetItem(row[0]))
+        self.srchrng.setText('{:,d} to  {:,d} of'.format(self.row + 1, self.row + 1 + trw))
         cur.close()
 
-    def nextRows(self):
+    def nextRows(self, top=False):
         if len(self.rows) < self.pagerows.value():
-            return
-        self.row += self.pagerows.value()
-        if self.row >= len(self.rows):
+                return
+        self.wrapmsg.setText('')
+        if top:
             self.row = 0
-            self.wrapmsg.setText('Wrapped to top')
         else:
-            self.wrapmsg.setText('')
+            self.row += self.pagerows.value()
+            if self.row >= len(self.rows):
+                self.row = 0
+                self.wrapmsg.setText('Wrapped to top')
         self.getRows()
 
-    def prevRows(self):
+    def prevRows(self, bottom=False):
         if len(self.rows) < self.pagerows.value():
             return
         self.wrapmsg.setText('')
-        if self.row - self.pagerows.value() < 0:
+        if bottom:
+            self.row = len(self.rows) - self.pagerows.value()
+        elif self.row - self.pagerows.value() < 0:
             if self.row > 0:
                 self.row = 0
             else:
@@ -1033,7 +1048,7 @@ class TabDialog(QtGui.QMainWindow):
         else:
             locnlist = None
         cur.close()
-        dialog = displayobject.AnObject(QtGui.QDialog(), itmproperty, readonly=False,
+        dialog = displayobject.AnObject(QDialog(), itmproperty, readonly=False,
                  textedit=True, title='Edit Item (' + str(self.rows[self.row + row]) + ')',
                  combolist=combolist, multi=self.category_multi, locnlist=locnlist)
         dialog.exec_()
@@ -1047,12 +1062,12 @@ class TabDialog(QtGui.QMainWindow):
                 for valu in sorted(dialog.getValues()[self.category]):
                     txt += ';' + valu
                 txt = txt[1:]
-                self.table.setItem(row, 3, QtGui.QTableWidgetItem(txt))
+                self.table.setItem(row, 3, QTableWidgetItem(txt))
             else:
-                self.table.setItem(row, 3, QtGui.QTableWidgetItem(dialog.getValues()[self.category]))
-            self.table.setItem(row, 2, QtGui.QTableWidgetItem(dialog.getValues()['Title']))
+                self.table.setItem(row, 3, QTableWidgetItem(dialog.getValues()[self.category]))
+            self.table.setItem(row, 2, QTableWidgetItem(dialog.getValues()['Title']))
             if self.field != '' and self.field not in fields:
-                self.table.setItem(row, 1, QtGui.QTableWidgetItem(dialog.getValues()[self.field]))
+                self.table.setItem(row, 1, QTableWidgetItem(dialog.getValues()[self.field]))
         except:
             pass
         cur = self.conn.cursor()
@@ -1108,13 +1123,13 @@ class TabDialog(QtGui.QMainWindow):
         row = self.table.indexAt(position).row()
         if row < 0:
             return
-        msgbox = QtGui.QMessageBox()
+        msgbox = QMessageBox()
         msgbox.setWindowTitle('Delete item')
         msgbox.setText("Press Yes to delete '" + str(self.table.item(row, 2).text()) + "'")
-        msgbox.setIcon(QtGui.QMessageBox.Question)
-        msgbox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+        msgbox.setIcon(QMessageBox.Question)
+        msgbox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         reply = msgbox.exec_()
-        if reply == QtGui.QMessageBox.Yes:
+        if reply == QMessageBox.Yes:
             cur = self.conn.cursor()
             iid = self.rows[self.row + row]
             sql = "delete from meta where item_id = ?"
@@ -1124,7 +1139,7 @@ class TabDialog(QtGui.QMainWindow):
             cur.execute("select count(*) from items")
             cnt = cur.fetchone()[0]
             if cnt > 0:
-                self.items.setText('(' + str(cnt) + ' items)')
+                self.items.setText('({:,d} items)'.format(cnt))
             else:
                 self.items.setText('')
             cur.close()
@@ -1148,11 +1163,11 @@ class TabDialog(QtGui.QMainWindow):
                 '<p>You should have received a copy of the GNU Affero General Public License\n' + \
                 ' along with this program. If not, see <a href="http://www.gnu.org/licenses/">\n' + \
                 'http://www.gnu.org/licenses/</a></html>'
-        dialog = displayobject.AnObject(QtGui.QDialog(), about, title='About ' + self.me)
+        dialog = displayobject.AnObject(QDialog(), about, title='About ' + self.me)
         dialog.exec_()
 
     def showHelp(self):
-        dialog = displayobject.AnObject(QtGui.QDialog(), 'catalogue.html', title='Help for ' + self.me)
+        dialog = displayobject.AnObject(QDialog(), 'catalogue.html', title='Help for ' + self.me)
         dialog.exec_()
 
     def header_click(self, position):
@@ -1170,9 +1185,9 @@ class TabDialog(QtGui.QMainWindow):
         event.accept()
 
     def findFolder(self, itemid, folder, filename):
-        folder = QtGui.QFileDialog.getExistingDirectory(None,
+        folder = QFileDialog.getExistingDirectory(None,
                  'Folder to start searching for ' + filename, folder,
-                 QtGui.QFileDialog.ShowDirsOnly)
+                 QFileDialog.ShowDirsOnly)
         if folder != '':
             possibles = []
             folders = [f[0] for f in os.walk(folder)]
@@ -1215,52 +1230,52 @@ class TabDialog(QtGui.QMainWindow):
                 return
 
 
-class ClickableQLabel(QtGui.QLabel):
+class ClickableQLabel(QLabel):
     def __init(self, parent):
         QLabel.__init__(self, parent)
 
     def mousePressEvent(self, event):
-        QtGui.QApplication.widgetAt(event.globalPos()).setFocus()
-        self.emit(QtCore.SIGNAL('clicked()'))
+        QApplication.widgetAt(event.globalPos()).setFocus()
+        self.emit(SIGNAL('clicked()'))
 
 
-class whatFiles(QtGui.QDialog):
+class whatFiles(QDialog):
     def __init__(self, files, launcher=''):
         super(whatFiles, self).__init__()
         self.files = files
         self.launcher = launcher
         self.chosen = []
-        self.grid = QtGui.QGridLayout()
+        self.grid = QGridLayout()
         self.checkbox = []
-        self.checkbox.append(QtGui.QCheckBox('Check / Uncheck all', self))
+        self.checkbox.append(QCheckBox('Check / Uncheck all', self))
         self.grid.addWidget(self.checkbox[-1], 0, 0)
         i = 0
         c = 0
         for fil in range(len(self.files)):
-            self.checkbox.append(QtGui.QCheckBox(self.files[fil][1]))
+            self.checkbox.append(QCheckBox(self.files[fil][1]))
             self.checkbox[-1].setObjectName(str(fil))
             i += 1
             self.grid.addWidget(self.checkbox[-1], i, c)
             if i > 25:
                 i = 0
                 c += 1
-        self.grid.connect(self.checkbox[0], QtCore.SIGNAL('stateChanged(int)'), self.check_all)
-        show = QtGui.QPushButton('Choose', self)
+        self.checkbox[0].stateChanged.connect(self.check_all)
+        show = QPushButton('Choose', self)
         self.grid.addWidget(show, i + 1, c)
         show.clicked.connect(self.showClicked)
         self.setLayout(self.grid)
         self.setWindowTitle('Select files to add - Right-click to open')
-        QtGui.QShortcut(QtGui.QKeySequence('q'), self, self.quitClicked)
+        QShortcut(QKeySequence('q'), self, self.quitClicked)
         self.show_them = False
         self.show()
 
     def check_all(self):
         if self.checkbox[0].isChecked():
             for i in range(len(self.checkbox)):
-                self.checkbox[i].setCheckState(QtCore.Qt.Checked)
+                self.checkbox[i].setCheckState(Checked)
         else:
             for i in range(len(self.checkbox)):
-                self.checkbox[i].setCheckState(QtCore.Qt.Unchecked)
+                self.checkbox[i].setCheckState(Unchecked)
 
     def closeEvent(self, event):
         if not self.show_them:
@@ -1272,7 +1287,7 @@ class whatFiles(QtGui.QDialog):
 
     def showClicked(self):
         for fil in range(1, len(self.checkbox)):
-            if self.checkbox[fil].checkState() == QtCore.Qt.Checked:
+            if self.checkbox[fil].checkState() == Qt.Checked:
                 self.chosen.append(self.files[fil - 1])
         self.show_them = True
         self.close()
@@ -1283,15 +1298,15 @@ class whatFiles(QtGui.QDialog):
     def mousePressEvent(self, QMouseEvent):
         if self.launcher == '':
             return
-        cursor = QtGui.QCursor()
-        widget = QtGui.qApp.widgetAt(cursor.pos())
+        cursor = QCursor()
+        widget = qApp.widgetAt(cursor.pos())
         fil = int(widget.objectName())
         if os.path.exists(self.files[fil][0] + '/' + self.files[fil][1]):
             os.system(self.launcher + ' "' + self.files[fil][0] + '/' + self.files[fil][1] + '"')
 
 
 if '__main__' == __name__:
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     tabdialog = TabDialog()
     tabdialog.show()
     sys.exit(app.exec_())
