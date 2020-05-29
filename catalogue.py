@@ -677,7 +677,7 @@ class TabDialog(QMainWindow):
         addproperty = {}
         fields = ['Title', 'Filename', 'Location']
         for field in fields:
-            if properties is not None and field in properties.keys():
+            if properties and field in properties.keys():
                 addproperty[field] = properties[field]
             else:
                 addproperty[field] = ''
@@ -690,7 +690,7 @@ class TabDialog(QMainWindow):
         while row is not None:
             if row[0] == self.category:
                 add_cat_field = False
-            if properties is not None and row[0] in properties.keys():
+            if properties and row[0] in properties.keys():
                 addproperty[row[0]] = properties[row[0]]
             else:
                 addproperty[row[0]] = ''
@@ -778,7 +778,7 @@ class TabDialog(QMainWindow):
 
     def do_search(self):
         # think about like options - '%S', '%S%', '%S_S%' '[a-zA-Z0-9_]%'
-        self.wrapmsg.setText('')
+    #    self.wrapmsg.setText('')
         self.field = self.metacombo.currentText()
         self.rows = []
         search = self.search.text()
@@ -1230,15 +1230,6 @@ class TabDialog(QMainWindow):
                 return
 
 
-class ClickableQLabel(QLabel):
-    def __init(self, parent):
-        QLabel.__init__(self, parent)
-
-    def mousePressEvent(self, event):
-        QApplication.widgetAt(event.globalPos()).setFocus()
-        self.emit(SIGNAL('clicked()'))
-
-
 class whatFiles(QDialog):
     def __init__(self, files, launcher=''):
         super(whatFiles, self).__init__()
@@ -1272,10 +1263,10 @@ class whatFiles(QDialog):
     def check_all(self):
         if self.checkbox[0].isChecked():
             for i in range(len(self.checkbox)):
-                self.checkbox[i].setCheckState(Checked)
+                self.checkbox[i].setCheckState(Qt.Checked)
         else:
             for i in range(len(self.checkbox)):
-                self.checkbox[i].setCheckState(Unchecked)
+                self.checkbox[i].setCheckState(Qt.Unchecked)
 
     def closeEvent(self, event):
         if not self.show_them:

@@ -218,6 +218,7 @@ class AnObject(QDialog):
                 self.keys = []
                 metrics = [QLabel('text').fontMetrics(), GrowingTextEdit('text').fontMetrics()]
                 rows = {}
+                heights = 18
                 for key, value in self.anobject.items():
                     if value is None:
                         value = ''

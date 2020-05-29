@@ -31,7 +31,7 @@ import tempfile
 from PyPDF2 import PdfFileReader
 if sys.platform == 'win32' or sys.platform == 'cygwin':
     from win32api import GetFileVersionInfo, LOWORD, HIWORD
-import xlrd
+import pyexcel as pxl
 
 import displaytable
 
@@ -220,225 +220,105 @@ def load_catalogue(him, database, datafile):
         return 'Database not found'
     if not os.path.exists(datafile):
         return 'Data file not found'
-    ftyp = datafile[datafile.rfind('.'):].lower()
-    if ftyp == '.xls' or ftyp == '.xlsx':
-        workbook = xlrd.open_workbook(datafile)
-        worksheet = workbook.sheet_by_index(0)
-        num_rows = worksheet.nrows
-        num_cols = worksheet.ncols
-      # get column names
-        hdrs = []
-        cat_not_defined = False
-        conn = create_connection(database)
-        cur = conn.cursor()
-        cur.execute("select description from fields where typ = 'Settings' and field = 'Category Field'")
-        try:
-            fields = [cur.fetchone()[0].title()]
-        except:
-            cat_not_defined = True
-            fields = ['Category']
-        fields = fields + ['title', 'filename', 'location']
-        fldcol = [-1, -1, -1, -1]
-        col = 0
-        while col < num_cols:
-            col_val = worksheet.cell_value(0, col) #.lower() #.split(' ')[0]
+    items = pxl.get_records(file_name=datafile)
+    if len(items) == 0:
+        return 'No items to load'
+    # get column names
+    hdrs = []
+    cat_not_defined = False
+    conn = create_connection(database)
+    cur = conn.cursor()
+    cur.execute("select description from fields where typ = 'Settings' and field = 'Category Field'")
+    try:
+        fields = [cur.fetchone()[0].title()]
+    except:
+        cat_not_defined = True
+        fields = ['Category']
+    fields = fields + ['title', 'filename', 'location']
+    fldkey = ['', '', '', '']
+    for f in range(len(fields)):
+        for key in items[0].keys():
+            if key.lower() == fields[f].lower():
+                fldkey[f] = key
+                break
+        else:
             try:
-                acol = fields.index(col_val.lower())
-                fldcol[acol] = col
+                dialog = displaytable.Table(list(items[0].keys()), fields=['attribute'],
+                         title='Choose ' + fields[f].title() + ' column')
+                dialog.exec_()
+                fld = dialog.getChoice()
+                if fld is None:
+                    raise Exception('Invalid field')
+                fldkey[f] = fld
+                if f == 0:
+                    sqlc = "select count(*) from meta where field = ?"
+                    cur.execute(sqlc, (fields[0], ))
+                    if cur.fetchone()[0] == 0:
+                        fields[0] = fld.title()
+                        if not cat_not_defined:
+                            sqlu = "update fields set description = ? where typ = 'Settings' and field = 'Category Field'"
+                            cur.execute(sqlu, (fields[0], ))
             except:
-                pass
-            hdrs.append(col_val)
-            col += 1
-        for c in range(len(fields)):
-            if fldcol[c] < 0:
-                try:
-                    dialog = displaytable.Table(hdrs, fields=['attribute'], title='Choose ' + fields[c].title() + ' column')
-                    dialog.exec_()
-                    fld = dialog.getChoice()
-                    h = hdrs.index(fld)
-                    fldcol[c] = h
-                    if c == 0:
-                        sqlc = "select count(*) from meta where field = ?"
-                        cur.execute(sqlc, (fields[0], ))
-                        if cur.fetchone()[0] == 0:
-                            fields[0] = fld.title()
-                            if not cat_not_defined:
-                                sqlu = "update fields set description = ? where typ = 'Settings' and field = 'Category Field'"
-                                cur.execute(sqlu, (fields[0], ))
-                        else:
-                            hdrs[h] = fields[0].title()
-                except:
-                    if c < 2:
-                        cur.close()
-                        conn.close()
-                        return 'Invalid column selected for ' + fields[c].title()
-        curr_col = 0
-        curr_row = 0
-        cats = []
-        col = 0
-        sqlc = "select count(*) from fields where typ = 'Meta' and field = ?"
-        sql = "insert into fields (typ, field) values ('Meta', ?)"
-        if cat_not_defined:
-            fields[0] = hdrs[fldcol[0]].lower()
-            sqls = "insert into fields (typ, field, description) values ('Settings', 'Category Field', ?)"
-            cur.execute(sqls, (fields[0].title(), ))
-            cur.execute(sqlc, (fields[0], ))
+                if f < 2:
+                    cur.close()
+                    conn.close()
+                    return 'Invalid field selected for ' + fields[f].title()
+    cats = []
+    sqlc = "select count(*) from fields where typ = 'Meta' and field = ?"
+    sql = "insert into fields (typ, field) values ('Meta', ?)"
+    if cat_not_defined:
+        fields[0] = fldkey[0].title()
+        sqls = "insert into fields (typ, field, description) values ('Settings', 'Category Field', ?)"
+        cur.execute(sqls, (fields[0], ))
+        cur.execute(sqlc, (fields[0], ))
+        if cur.fetchone()[0] == 0:
+            cur.execute(sql, (fields[0].title(), ))
+    for key in items[0].keys():
+        if key in fldkey:
+            pass
+        else:
+            cur.execute(sqlc, (key, ))
             if cur.fetchone()[0] == 0:
-                cur.execute(sql, (fields[0].title(), ))
-        while col < num_cols:
-            if col in fldcol:
+                cur.execute(sql, (key.title(), ))
+    sql = 'insert into items (title, filename, location) values (?, ?, ?)'
+    sqlr = 'select last_insert_rowid()'
+    sqli = 'insert into meta (field, item_id, value) values (?, ?, ?)'
+    ctr = 0
+    for item in items:
+        if item[fldkey[1]] == '':
+            continue
+        values = ['?', '', '', '']
+        for col in range(len(fldkey)):
+            if fldkey[col] == '':
                 pass
-            else:
-                cur.execute(sqlc, (worksheet.cell_value(0, col), ))
-                if cur.fetchone()[0] == 0:
-                    cur.execute(sql, (worksheet.cell_value(0, col).title(), ))
-            col += 1
-        row = 1
-        sql = 'insert into items (title, filename, location) values (?, ?, ?)'
-        sqlr = 'select last_insert_rowid()'
-        sqli = 'insert into meta (field, item_id, value) values (?, ?, ?)'
-        ctr = 0
-        while row < num_rows:
-            if worksheet.cell_value(row, fldcol[1]) == '':
-                row += 1
-                continue
-            values = ['?', '', '', '']
-            for col in range(len(fldcol)):
-                if fldcol[col] >= 0:
-                    if col == 0 and worksheet.cell_value(row, fldcol[col]) == '':
-                        pass
-                    else:
-                        values[col] = worksheet.cell_value(row, fldcol[col])
-            if values[0] not in cats:
-                cats.append(values[0])
-            cur.execute(sql, (values[1], values[2], values[3]))
-            cur.execute(sqlr)
-            iid = cur.fetchone()[0]
-            col = 0
-            while col < num_cols:
-                if col in fldcol[1:]:
-                    pass
+            elif item[fldkey[col]] != '':
+                values[col] = item[fldkey[col]]
+        if values[0] not in cats:
+            cats.append(values[0])
+        cur.execute(sql, (values[1], values[2], values[3]))
+        cur.execute(sqlr)
+        iid = cur.fetchone()[0]
+        for key, value in item.items():
+            if key in fldkey[1:]:
+                pass
+            elif key == fldkey[0]:
+                if item[key] == '':
+                    cur.execute(sqli, (fields[0].title(), iid, '?'))
                 else:
-                    if worksheet.cell_value(row, col) != '':
-                        value = worksheet.cell_value(row, col)
-                        if isinstance(value, float):
-                            if value == int(value):
-                                value = int(value)
-                     #       value = str(
-                        cur.execute(sqli, (hdrs[col].title(), iid, value))
-                    elif col == fldcol[0]:
-                        cur.execute(sqli, (hdrs[col].title(), iid, '?'))
-                col += 1
-            row += 1
-            ctr += 1
-        sqlc = "select count(*) from fields where typ = ? and field = ?"
-        sql = "insert into fields (typ, field) values (?, ?)"
-        for cat in cats:
-            cur.execute(sqlc, (hdrs[fldcol[0]] , cat))
-            if cur.fetchone()[0] == 0:
-                cur.execute(sql, (hdrs[fldcol[0]].title(), cat))
-        cur.close()
-        conn.commit()
-        conn.close()
-        return str(ctr) + ' items loaded to ' + database[database.rfind('/') + 1:]
-    elif ftyp == '.csv':
-        csv_data = open(datafile)
-        items = csv.DictReader(csv_data)
-        cat_not_defined = False
-        conn = create_connection(database)
-        cur = conn.cursor()
-        cur.execute("select description from fields where typ = 'Settings' and field = 'Category Field'")
-        try:
-            fields = [cur.fetchone()[0].title()]
-        except:
-            cat_not_defined = True
-            fields = ['Category']
-        fields = fields + ['title', 'filename', 'location']
-        fldcol = [-1, -1, -1, -1]
-        for f in range(len(fields)):
-            for c in range(len(items.fieldnames)):
-                if items.fieldnames[c].lower() == fields[f].lower():
-                    fldcol[f] = c
-                    break
-            else:
-                try:
-                    dialog = displaytable.Table(items.fieldnames, fields=['attribute'],
-                             title='Choose ' + fields[f].title() + ' column')
-                    dialog.exec_()
-                    fld = dialog.getChoice()
-                    h = items.fieldnames.index(fld)
-                    fldcol[f] = h
-                    if f == 0:
-                        sqlc = "select count(*) from meta where field = ?"
-                        cur.execute(sqlc, (fields[0], ))
-                        if cur.fetchone()[0] == 0:
-                            fields[0] = fld.title()
-                            if not cat_not_defined:
-                                sqlu = "update fields set description = ? where typ = 'Settings' and field = 'Category Field'"
-                                cur.execute(sqlu, (fields[0], ))
-                except:
-                    if f < 2:
-                        cur.close()
-                        conn.close()
-                        return 'Invalid column selected for ' + fields[f].title()
-        cats = []
-        sqlc = "select count(*) from fields where typ = 'Meta' and field = ?"
-        sql = "insert into fields (typ, field) values ('Meta', ?)"
-        if cat_not_defined:
-            fields[0] = items.fieldnames[fldcol[0]].title()
-            sqls = "insert into fields (typ, field, description) values ('Settings', 'Category Field', ?)"
-            cur.execute(sqls, (fields[0], ))
-            cur.execute(sqlc, (fields[0], ))
-            if cur.fetchone()[0] == 0:
-                cur.execute(sql, (fields[0].title(), ))
-        for col in range(len(items.fieldnames)):
-            if col in fldcol:
-                pass
-            else:
-                cur.execute(sqlc, (items.fieldnames[col], ))
-                if cur.fetchone()[0] == 0:
-                    cur.execute(sql, (items.fieldnames[col].title(), ))
-        sql = 'insert into items (title, filename, location) values (?, ?, ?)'
-        sqlr = 'select last_insert_rowid()'
-        sqli = 'insert into meta (field, item_id, value) values (?, ?, ?)'
-        ctr = 0
-        for item in items:
-            if item[items.fieldnames[fldcol[1]]] == '':
-                continue
-            values = ['?', '', '', '']
-            for col in range(len(fldcol)):
-                if item[items.fieldnames[fldcol[col]]] != '':
-                #    if col == 0 and item[fldcol[col]] == '':
-                 #       pass
-                  #  else:
-                    values[col] = item[items.fieldnames[fldcol[col]]]
-            if values[0] not in cats:
-                cats.append(values[0])
-            cur.execute(sql, (values[1], values[2], values[3]))
-            cur.execute(sqlr)
-            iid = cur.fetchone()[0]
-            for col in range(len(items.fieldnames)):
-                if col in fldcol[1:]:
-                    pass
-                elif col == fldcol[0]:
-                    if item[items.fieldnames[col]] == '':
-                        cur.execute(sqli, (fields[col].title(), iid, '?'))
-                    else:
-                        cur.execute(sqli, (fields[col].title(), iid, item[items.fieldnames[col]]))
-                else:
-                    if item[items.fieldnames[col]] != '':
-                        cur.execute(sqli, (items.fieldnames[col].title(), iid, item[items.fieldnames[col]]))
-            ctr += 1
-        sqlc = "select count(*) from fields where typ = ? and field = ?"
-        sql = "insert into fields (typ, field) values (?, ?)"
-        for cat in cats:
-            cur.execute(sqlc, (fields[0] , cat))
-            if cur.fetchone()[0] == 0:
-                cur.execute(sql, (fields[0].title(), cat))
-        cur.close()
-        conn.commit()
-        conn.close()
-        return str(ctr) + ' items loaded to ' + database[database.rfind('/') + 1:]
+                    cur.execute(sqli, (fields[0].title(), iid, value))
+            elif value != '':
+                    cur.execute(sqli, (key.title(), iid, value))
+        ctr += 1
+    sqlc = "select count(*) from fields where typ = ? and field = ?"
+    sql = "insert into fields (typ, field) values (?, ?)"
+    for cat in cats:
+        cur.execute(sqlc, (fields[0] , cat))
+        if cur.fetchone()[0] == 0:
+            cur.execute(sql, (fields[0].title(), cat))
+    cur.close()
+    conn.commit()
+    conn.close()
+    return str(ctr) + ' items loaded to ' + database[database.rfind('/') + 1:]
 
 def getUser():
     if sys.platform == 'win32' or sys.platform == 'cygwin':   # windows
