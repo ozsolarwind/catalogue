@@ -175,6 +175,9 @@ class TabDialog(QMainWindow):
         db_lod.setShortcut('Ctrl+L')
         db_lod.setStatusTip('Load Catalogue')
         db_lod.triggered.connect(self.loadDB)
+        db_xpt = QAction(QIcon('save.png'), 'Export', self)
+        db_xpt.setStatusTip('Export Catalogue')
+        db_xpt.triggered.connect(self.exportDB)
         db_rem = QAction(QIcon('cancel.png'), 'Remove', self)
         db_rem.setStatusTip('Remove Catalogue')
         db_rem.triggered.connect(self.remDB)
@@ -187,6 +190,7 @@ class TabDialog(QMainWindow):
         dbMenu.addAction(db_add)
         dbMenu.addAction(db_new)
         dbMenu.addAction(db_lod)
+        dbMenu.addAction(db_xpt)
         dbMenu.addAction(db_rem)
         dbMenu.addAction(db_qui)
         attrMenu = menubar.addMenu('&Attributes')
@@ -232,7 +236,7 @@ class TabDialog(QMainWindow):
         self.table.setRowCount(table_rows)
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(['', '', 'Title', self.category])
-        self.table.setColumnWidth(0, 30)
+        self.table.setColumnWidth(0, 20)
         self.table.setColumnWidth(1, 0)
         self.table.setColumnWidth(2, 800)
         self.table.setColumnWidth(3, 200)
@@ -281,6 +285,7 @@ class TabDialog(QMainWindow):
             self.db = db
             self.wrapmsg.setText('Catalogue opened')
             self.updDetails()
+            self.search.setText('')
             self.do_search()
 
     def addDB(self):
@@ -350,14 +355,25 @@ class TabDialog(QMainWindow):
         self.loadDB()
 
     def loadDB(self):
+        fldr = self.db[:self.db.rfind('/')]
         data_file = QFileDialog.getOpenFileName(None, 'Choose data to load',
-                  '', 'Excel Files (*.xls*);;CSV files (*.csv)')[0]
+                    fldr, 'Data Files (*.xls* *.csv)')[0]
         if data_file == '':
             return
         message = load_catalogue(self, self.db, data_file)
         self.wrapmsg.setText(message)
         self.updDetails()
         self.do_search()
+
+    def exportDB(self):
+        fldr = self.db[:self.db.rfind('/') + 1] + self.metacombo.currentText() + '_' \
+               + self.filter.currentText() + '_' + self.search.text() + '.csv'
+        data_file = QFileDialog.getSaveFileName(None, 'Choose export file',
+                    fldr, 'Data Files (*.xls* *.csv)')[0]
+        if data_file == '':
+            return
+        message = export_catalogue(self, self.db, data_file, self.rows)
+        self.wrapmsg.setText(message)
 
     def updDetails(self):
         cur = self.conn.cursor()
@@ -904,16 +920,17 @@ class TabDialog(QMainWindow):
                 break
             cur.execute(sql, (self.rows[self.row + trw], ))
             row = cur.fetchone()
-            if row[1] == '' and self.url_field != '':
-                # need to check here if they have a url
-                cur.execute(sql1, (self.rows[self.row + trw], self.url_field))
-                urow = cur.fetchone()
-                if urow is not None:
-                    button = QPushButton('', self.table)
-                    button.setIcon(QIcon('url.png'))
-                    button.setFlat(True)
-                    self.table.setCellWidget(trw, 0, button)
-                    button.clicked.connect(partial(self._buttonItemClicked, trw))
+            if row[1] == '':
+                if self.url_field != '':
+                    # need to check here if they have a url
+                    cur.execute(sql1, (self.rows[self.row + trw], self.url_field))
+                    urow = cur.fetchone()
+                    if urow is not None:
+                        button = QPushButton('', self.table)
+                        button.setIcon(QIcon('url.png'))
+                        button.setFlat(True)
+                        self.table.setCellWidget(trw, 0, button)
+                        button.clicked.connect(partial(self._buttonItemClicked, trw))
             elif self.launcher != '':
                 button = QPushButton('', self.table)
                 button.setIcon(QIcon('open.png'))

@@ -284,6 +284,7 @@ def load_catalogue(him, database, datafile):
     sqlr = 'select last_insert_rowid()'
     sqli = 'insert into meta (field, item_id, value) values (?, ?, ?)'
     ctr = 0
+    multi = False
     for item in items:
         if item[fldkey[1]] == '':
             continue
@@ -293,8 +294,12 @@ def load_catalogue(him, database, datafile):
                 pass
             elif item[fldkey[col]] != '':
                 values[col] = item[fldkey[col]]
-        if values[0] not in cats:
-            cats.append(values[0])
+        valu = values[0].split(';')
+        if len(valu) > 1:
+            multi = True
+        for val in valu:
+            if val not in cats:
+                cats.append(val)
         cur.execute(sql, (values[1], values[2], values[3]))
         cur.execute(sqlr)
         iid = cur.fetchone()[0]
@@ -309,6 +314,9 @@ def load_catalogue(him, database, datafile):
             elif value != '':
                     cur.execute(sqli, (key.title(), iid, value))
         ctr += 1
+    if multi:
+        sqlu = "update fields set description = 'Multi' where typ = 'Settings' and field = 'Category Choice'"
+        cur.execute(sqlu)
     sqlc = "select count(*) from fields where typ = ? and field = ?"
     sql = "insert into fields (typ, field) values (?, ?)"
     for cat in cats:
@@ -318,7 +326,64 @@ def load_catalogue(him, database, datafile):
     cur.close()
     conn.commit()
     conn.close()
-    return str(ctr) + ' items loaded to ' + database[database.rfind('/') + 1:]
+    pxl.free_resources()
+    return '{:,d} items loaded to {}'.format(ctr, database[database.rfind('/') + 1:])
+
+def export_catalogue(him, database, datafile, rows):
+    if not os.path.exists(database):
+        return 'Database not found'
+    conn = create_connection(database)
+    cur = conn.cursor()
+    cur.execute("select description from fields where typ = 'Settings' and field = 'Category Field'")
+    try:
+        fields = [cur.fetchone()[0].title()]
+    except:
+        fields = ['Category']
+    fields = fields + ['title', 'filename', 'location']
+    cur.execute("select field from fields where typ = 'Meta' order by field")
+    row = cur.fetchone()
+    while row is not None:
+        if row[0] != fields[0]:
+            fields.append(row[0])
+        row = cur.fetchone()
+    sql = "select title, filename, location from items where id = ?"
+    sql2 = "select field, value from meta where item_id = ?"
+    items = []
+    for iid in rows:
+        item = {}
+        cur.execute(sql, (iid, ))
+        row = cur.fetchone()
+        item['title'] = row[0]
+        item['filename'] = row[1]
+        item['location'] = row[2]
+        cats = []
+        cur.execute(sql2, (iid, ))
+        row = cur.fetchone()
+        while row is not None:
+            if row[0] == fields[0]:
+                cats.append(row[1])
+            else:
+                item[row[0]] = row[1]
+            row = cur.fetchone()
+        try:
+            cat = cats[0]
+            for c in range(1, len(cats)):
+                cat += ';' + cats[c]
+        except:
+            cat = '?'
+        item[fields[0]] = cat
+        for key in fields:
+            if key in item.keys():
+                pass
+            else:
+                item[key] = ''
+        items.append(item)
+    cur.close()
+    conn.commit()
+    conn.close()
+    pxl.save_as(records=items, dest_file_name=datafile)
+    pxl.free_resources()
+    return '{:,d} items exported'.format(len(rows))
 
 def getUser():
     if sys.platform == 'win32' or sys.platform == 'cygwin':   # windows

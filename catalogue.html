@@ -146,7 +146,7 @@ ul {
 <li>Category Choice - You can choose to allow multiple Category values for an item by setting this value to <dfn>multi</dfn>. The default is a single value</li>
 </ul>
 <p>
-<li><strong>Attribues &rarr; Category</strong> (the menu item will display the name of the Category field) Update the list of categories available. When adding or editing an item you will either be presented with a pulldown list if a single Category value is allowed or you click on the Category field to select multiple category values. For multiple categories pressing Ctrl+left mouse button allows you to select a set of individual values while Shift+left mouse button allows you to select a group of values</li>
+<li><strong>Attribues &rarr; Category</strong> (the menu item will display the name of the Category field) Update the list of categories available. When adding or editing an item you will be presented with either a pulldown list if a single Category value is allowed or a list of Category values where you can select multiple category values. For multiple categories you select individual values or hold the left mouse button and drag up or down to select a group of values</li>
 </ul>
 <p>
 <li>You can define any number of additional attributes for each item by defining additional <dfn>Meta</dfn> fields.
@@ -155,7 +155,7 @@ ul {
 <li><strong>Attribues &rarr; Meta</strong> Update the list of attributes (fields) available. When adding or editing an item you will be presented with a window containing all attributes to be updated</li>
 </ul>
 <p>
-<li>You can load a spreadsheet or CSV file into the catalogue by choosing <strong>Catalogue &rarr; Load</strong>. The load process will create attributes (fields) identified by the spreadsheet column names. If you're loading the data into a new catalogue you can use one of the spreadsheet column names to define the category attribute</li>
+<li>You can load a spreadsheet or CSV file into the catalogue by choosing <strong>Catalogue &rarr; Load</strong>. The load process will create attributes (fields) identified by the spreadsheet column names. If you're loading the data into a new catalogue you can use one of the spreadsheet column names to define the category, title, folder and filename fields (catgeory and title are required)</li>
 </ul>
 <h3>Main Window</h3>
 <p>The application has a main window, as described below.</p>
@@ -183,7 +183,11 @@ ul {
 </tr>
 <tr class="none">
 <td class="none"><img src="load.png" alt="Load catalogue">&nbsp;&nbsp;Load</td>
-<td class="none">Load items into a catalogue. You can choose a spreadsheet or CSV file containing a list of items to be added to the catalogue</td>
+<td class="none">Load items into a catalogue. You can choose a spreadsheet or CSV file containing a list of items to be added to the catalogue. If the category field has multiple values they should be separated by a semi-colon</td>
+</tr>
+<tr class="none">
+<td class="none"><img src="save.png" alt="Export catalogue">&nbsp;&nbsp;Load</td>
+<td class="none">Export items from catalogue. You can save to a spreadsheet or CSV file. Those items meeting the current search will be exported. If the category field has multiple values they will be separated by a semi-colon</td>
 </tr>
 <tr class="none">
 <td class="none"><img src="cancel.png" alt="Remove catalogue">&nbsp;&nbsp;Remove</td>
@@ -283,7 +287,7 @@ ul {
 </ul>
 </li>
 <li><strong>Add Files</strong> - add new items from a folder (and sub-folders below it). You choose a folder to start searching for files and will then be presented with a list of files to choose from. For each file chosen you will be presented with the Add window to add the file to the catalogue. If you right-click on a file it will be opened (launched) to enable you to assess whether to add it to the catalogue or not.
-<br /><strong>Note:</strong> The list presented will be capped at around 20 plus whatever files are candidates in the current folder being searched. It is also recommended to search for missing <dfn>Filename</dfn>s before adding files
+<br /><strong>Note:</strong> The list presented will be capped at <em>Add Limit</em> plus whatever files are candidates in the current folder being searched. It is also recommended to search for missing <dfn>Filename</dfn>s before adding files
 </li>
 <li><strong>Add ISBN</strong> - add a new item using ISBN lookup. This button will only display if an ISBN Field is defined. You enter the ISBN and the program will obtain attempt to obtain some values from <a href="http://openlibrary.org">openlibrary.org</a> and then present the Add window. If the ISBN isn't found it will be copied to the Clipboard so you can search for it in your browser. The fields (attributes) currently have to have the following names:
 <ul>
