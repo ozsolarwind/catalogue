@@ -32,6 +32,10 @@ from PyPDF2 import PdfFileReader
 if sys.platform == 'win32' or sys.platform == 'cygwin':
     from win32api import GetFileVersionInfo, LOWORD, HIWORD
 import pyexcel as pxl
+import pyexcel_ods
+import pyexcel_xls
+import pyexcel_xlsx
+import pyexcel_xlsx.xlsxw
 
 import displaytable
 
