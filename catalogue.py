@@ -246,7 +246,7 @@ class TabDialog(QMainWindow):
         rows = self.table.verticalHeader()
         rows.setContextMenuPolicy(Qt.CustomContextMenu)
         rows.customContextMenuRequested.connect(self.row_click)
-        rows.setSelectionMode(QAbstractItemView.SingleSelection)
+        rows.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.verticalHeader().setVisible(True)
         self.table.cellClicked.connect(self.item_selected)
         layout.addWidget(self.table, 3, 0, 1, 5)
@@ -263,6 +263,8 @@ class TabDialog(QMainWindow):
         goto_top.activated.connect(lambda: self.nextRows(top=True))
         goto_end = QShortcut(QKeySequence('Ctrl+End'), self)
         goto_end.activated.connect(lambda: self.prevRows(bottom=True))
+        delete = QShortcut(QKeySequence('Ctrl+Del'), self)
+        delete.activated.connect(lambda: self.delete_items())
         if self.conn is not None:
             self.updDetails()
             self.do_search()
@@ -1162,6 +1164,38 @@ class TabDialog(QMainWindow):
             cur.close()
             self.conn.commit()
         #    self.table.removeRow(row)
+            self.do_search()
+
+    def delete_items(self):
+        delrows = []
+        for item in self.table.selectedItems():
+            if item.row() not in delrows and self.row + item.row() < len(self.rows):
+                delrows.append(item.row())
+        if len(delrows) == 0:
+            return
+        msgbox = QMessageBox()
+        msgbox.setWindowTitle('Delete items')
+        msgbox.setText("Press Yes to delete " + str(len(delrows)) + " items.")
+        msgbox.setIcon(QMessageBox.Question)
+        msgbox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        reply = msgbox.exec_()
+        if reply == QMessageBox.Yes:
+            sqlm = "delete from meta where item_id = ?"
+            sqli = "delete from items where id = ?"
+            cur = self.conn.cursor()
+            for row in delrows:
+                iid = self.rows[self.row + row]
+                cur.execute(sqlm, (iid, ))
+                cur.execute(sqli, (iid, ))
+            cur.execute("select count(*) from items")
+            cnt = cur.fetchone()[0]
+            if cnt > 0:
+                self.items.setText('({:,d} items)'.format(cnt))
+            else:
+                self.items.setText('')
+            cur.close()
+            self.conn.commit()
+            self.wrapmsg.setText(str(len(delrows)) + ' items deleted.')
             self.do_search()
 
     def showAbout(self):
