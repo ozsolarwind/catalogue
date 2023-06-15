@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019-2020 Angus King
+#  Copyright (C) 2019-2023 Angus King
 #
 #  catalogue.py - This file is part of catalogue.
 #
@@ -107,6 +107,10 @@ class TabDialog(QMainWindow):
         self.addisbn.clicked.connect(self.addISBN)
         if self.isbn_field == '':
             self.addisbn.setVisible(False)
+        self.ignore_expired = QCheckBox('Ignore ' + self.expired_category + '?', self)
+        buttonLayout.addWidget(self.ignore_expired)
+        if self.expired_category != '':
+            self.ignore_expired.setVisible(True)
         QShortcut(QKeySequence('pgdown'), self, self.nextRows)
         QShortcut(QKeySequence('pgup'), self, self.prevRows)
         buttons = QFrame()
@@ -394,6 +398,9 @@ class TabDialog(QMainWindow):
         self.url_field = ''
         self.isbn_field = ''
         self.dewey_field = ''
+        self.default_category = '?'
+        self.expired_category = ''
+        self.set_ignore_expired = False
         cur.execute("select field, description from fields where typ = 'Settings'")
         row = cur.fetchone()
         while row is not None:
@@ -404,8 +411,15 @@ class TabDialog(QMainWindow):
                 self.category = row[1].title()
             elif row[0] == 'Decrypt PDF':
                 self.pdf_decrypt = row[1]
+            elif row[0] == 'Default Category':
+                self.default_category = row[1].title()
             elif row[0] == 'Dewey Field':
                 self.dewey_field = row[1].title()
+            elif row[0] == 'Expired Category':
+                self.expired_category = row[1].title()
+            elif row[0] == 'Ignore Expired':
+                if row[1].lower() in ['true', 'on', 'yes']:
+                    self.set_ignore_expired = True
             elif row[0] == 'ISBN Field':
                 self.isbn_field = row[1].upper()
             elif row[0] == 'Launch File':
@@ -423,6 +437,18 @@ class TabDialog(QMainWindow):
                  self.addisbn.setVisible(True)
             else:
                  self.addisbn.setVisible(False)
+        except:
+            pass
+        try:
+            if self.expired_category != '':
+                self.ignore_expired.setText('Ignore ' + self.expired_category + '?')
+                self.ignore_expired.setVisible(True)
+                if self.set_ignore_expired:
+                    self.ignore_expired.setCheckState(Qt.Checked)
+                else:
+                    self.ignore_expired.setCheckState(Qt.Unchecked)
+            else:
+                self.ignore_expired.setVisible(False)
         except:
             pass
         self.attr_cat.setText(self.category)
@@ -492,6 +518,22 @@ class TabDialog(QMainWindow):
             info = True
             cat_title = ['', '']
         upd_rows = dict(dialog.getValues())
+        if self.sender().text() == 'Settings':
+            set_field = ''
+            set_default = ''
+            set_expired = ''
+            try:
+                set_field = upd_rows['Category Field']
+                try:
+                    set_default = upd_rows['Default Category']
+                except:
+                    pass
+                try:
+                    set_expired = upd_rows['Expired Category']
+                except:
+                    pass
+            except:
+                pass
         cur = self.conn.cursor()
         updcur = self.conn.cursor()
         cur.execute("select field, description from fields where typ = '" + self.sender().text() + "'")
@@ -562,6 +604,19 @@ class TabDialog(QMainWindow):
                     cat_title[1] = ' - ' + value
         if info:
             self.cattitle.setText(cat_title[0] + cat_title[1])
+        if self.sender().text() == 'Settings' and set_field != '':
+            if set_default != '':
+                sql = "select field from fields where typ = ? and field = ?"
+                cur.execute(sql, (set_field, set_default))
+                if row is None:
+                    sql = "insert into fields (typ, field, description) values (?, ?, ?)"
+                    updcur.execute(sql, (set_field, set_default, 'Default Category'))
+            if set_expired != '':
+                sql = "select field from fields where typ = ? and field = ?"
+                cur.execute(sql, (set_field, set_expired))
+                if row is None:
+                    sql = "insert into fields (typ, field, description) values (?, ?, ?)"
+                    updcur.execute(sql, (set_field, set_expired, 'Expired Category'))
         cur.close()
         updcur.close()
         self.conn.commit()
@@ -728,9 +783,11 @@ class TabDialog(QMainWindow):
                 row = cur.fetchone()
         else:
             locnlist = None
+        if self.default_category != '':
+            addproperty[self.category] = self.default_category
         dialog = displayobject.AnObject(QDialog(), addproperty, readonly=False,
                  textedit=True, title='Add Item', combolist=combolist, multi=self.category_multi,
-                 locnlist=locnlist)
+                 locnlist=locnlist, default=self.default_category)
         dialog.exec_()
         if dialog.getValues() is None or dialog.getValues()['Title'] == '':
             cur.close()
@@ -824,13 +881,23 @@ class TabDialog(QMainWindow):
             where = "like ?"
         else:
             return
+        no_expired = []
+        if self.ignore_expired.isChecked() and self.expired_category != '':
+            cur = self.conn.cursor()
+            sql = "select (item_id) from meta where field = ? and value = ?"
+            cur.execute(sql, (self.category, self.expired_category))
+            row = cur.fetchone()
+            while row is not None:
+                no_expired.append(row[0])
+                row = cur.fetchone()
+            cur.close()
         cur = self.conn.cursor()
         if self.field == 'All':
             sql = "select (id) from items where title " + where + \
                   " or filename " + where + \
                   " or location " + where + \
-                  " or id in (select (item_id) from meta where value " + where + \
-                  " ) order by title"
+                  " or id in (select (item_id) from meta where value " + where + ")" + \
+                  " order by title"
             cur.execute(sql, (search, search, search, search))
         elif self.filter.currentText() == 'duplicate':
             if self.field in ['Title', 'Filename', 'Location']:
@@ -888,7 +955,7 @@ class TabDialog(QMainWindow):
                 row = cur.fetchone()
         else:
             while row is not None:
-                if row[0] not in self.rows:
+                if row[0] not in self.rows and row[0] not in no_expired:
                     self.rows.append(row[0])
                 row = cur.fetchone()
         cur.close()
@@ -1069,7 +1136,8 @@ class TabDialog(QMainWindow):
         cur.close()
         dialog = displayobject.AnObject(QDialog(), itmproperty, readonly=False,
                  textedit=True, title='Edit Item (' + str(self.rows[self.row + row]) + ')',
-                 combolist=combolist, multi=self.category_multi, locnlist=locnlist)
+                 combolist=combolist, multi=self.category_multi, locnlist=locnlist,
+                 default=self.default_category)
         dialog.exec_()
         if dialog.getValues() is None:
             return
@@ -1202,7 +1270,7 @@ class TabDialog(QMainWindow):
         about = '<html>' + \
                 '<h2>Catalogue</h2>' + \
                 '<p>A simple catalogue for documents, books, whatever...</p>\n' + \
-                '<p>Copyright © 2019-2020 Angus King</p>\n' + \
+                '<p>Copyright © 2019-2023 Angus King</p>\n' + \
                 '<p>This program is free software: you can redistribute it and/or modify\n' + \
                 ' it under the terms of the GNU Affero General Public License as published\n' + \
                 ' by the Free Software Foundation, either version 3 of the License, or\n' + \

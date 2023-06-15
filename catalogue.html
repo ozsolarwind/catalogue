@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-#  Copyright (C) 2019 Angus King
+#  Copyright (C) 2019-2023 Angus King
 #
 #  catalogue.html - This file is part of catalogue.
 #
@@ -226,12 +226,15 @@ ul {
 <li><dfn>Category Choice</dfn> - You can choose to allow multiple Category values for an item by setting this value to <dfn>multi</dfn>. The default is a single value</li>
 <li><dfn>Category Field</dfn> - the name of the category field for the catalogue</li>
 <li><dfn>Decrypt PDF</dfn> - the name of a program to decrypt simple encrypted PDFs when they're added to the catalogue. This currently only works for Linux and the qpdf command/program</li>
+<li><dfn>Default Category</dfn> - a field to define a default Category value for items added without any Category value. The default is <code>?</code>. This default value will be removed if any other values are set</li>
 <li><dfn>Dewey Field</dfn> - a field to contain Dewey Decimal Classifications</li>
-<li><dfn>File Type</dfn> (or <dfn>File Types</dfn>) - when adding files from a folder the types of file will be limited to a range of types - doc, docx, html, pdf, xls, and xlsx. If you want additional types you can use    this setting to include additional types, separated by spaces</li>
+<li><dfn>Expired Category</dfn> - a field to define a Category value to indicate any expired or superceded item. If a value is defined a checkbox appears to the right of buttons to allow searches to ignore expired items</li>
+<li><dfn>File Type</dfn> (or <dfn>File Types</dfn>) - when adding files from a folder the types of file will be limited to a range of types - doc, docx, html, pdf, xls, and xlsx. If you want additional types you can use this setting to include additional types, separated by spaces</li>
+<li><dfn>Ignore Expired</dfn> - if set to true this will turn on the <dfn>Expired Category</dfn> checkbox. The default is false</li>
 <li><dfn>ISBN Field</dfn> - a field to contain the ISBN number for an item</li>
 <li><dfn>Launch File</dfn> - if set this is the command that will be issued to open a computer file. The value for Windows is <code>start &ldquo;&rdquo;</code> and for Linux <code>/usr/bin/xdg-open/</code>. To hide the launch column you need to set this to empty or delete the entry</li>
 <li><dfn>Location Choice</dfn> - You can choose the <dfn>Location</dfn> field to be a selection list by setting this value to <dfn>list</dfn>. You can add items to the list by simply typing in the new value. The default is for a &ldquo;freeform&rdquo; field</li>
-<li><dfn>Translate Userid</dfn> - if set any (or at least the first) occurence of the current userid will  be replaced by this value. This may be useful if the database is shared by several users. A suggested value is <code>$USER$</code></li>
+<li><dfn>Translate Userid</dfn> - if set, any (or at least the first) occurence of the current userid will be replaced by this value. This may be useful if the database is shared by several users. A suggested value is <code>$USER$</code></li>
 <li><dfn>URL Field</dfn> - Can be used to specify an Internet address (URL) field. If an item has no <dfn>Filename</dfn> value but does have a URL value a browser window will be launched to open the URL. If you add a <dfn>Meta</dfn> field called <dfn>URL</dfn> this setting will be updated to set that as a <dfn>URL Field</dfn></li>
 </ul></td>
 </tr>
@@ -267,6 +270,7 @@ ul {
 <li><dfn>duplicate</dfn> - select items that have duplicate values. If you specify a search value duplicates must start with this value</li>
 </ul>
 <li>The third field allows you to specify a search value. If the search filter is <dfn>starts with</dfn> and the search value is empty all items with the chosen attribute will be chosen. If you're searching for <dfn>duplicate</dfn> values (for example, locations) you can precede the search value with a <dfn>%</dfn> to find the search value anywhere</li>
+<li>If an Expired Category value is defined it is possible to exclude Expired items from the search by checking the checkbox just to the right of the buttons</li>
 <li>Pressing the Search button will initiate the search. Often pressing Enter will also initiate the search</li>
 <li>Below the search fields there are details on how many items satisfy the search and which items are being displayed in the list</li>
 <li>If you're searching for <dfn>missing</dfn> <dfn>Filename</dfn>s you'll be presented with a list of items not found in the item's <dfn>Location</dfn> (folder). You can attempt to find the location for the file by doing a search of folders. If you click on the <strong>Launch</strong> button for the item you'll be presented with a menu to set the starting folder to search. The program will search all folders below that to find the missing file. If there is a single copy of the file, the program will update the <dfn>Location</dfn> for the item and launch the item. If there is more than one copy of the file you will be presented with a list of locations plus the size of each file enabling you to choose the correct copy</li>

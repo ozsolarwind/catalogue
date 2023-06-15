@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019-2020 Angus King
+#  Copyright (C) 2019-2023 Angus King
 #
 #  displayobject.py - This file is part of catalogue.
 #
@@ -39,7 +39,7 @@ class GrowingTextEdit(QPlainTextEdit):
         self.heightMax = 65000
 
     def sizeChange(self):
-        docHeight = self.document().size().height()
+        docHeight = int(self.document().size().height())
     #    print('(27)', self.document().size().height(), self.document().size().width())
         if self.heightMin <= docHeight <= self.heightMax:
             self.setMinimumHeight(docHeight)
@@ -56,10 +56,10 @@ class AnObject(QDialog):
 
     def resize(self, w, h):
     #    # Pass through to Qt to resize the widget.
-        QWidget.resize( self, w, h )
+        QWidget.resize(self, int(w), int(h))
 
     def __init__(self, dialog, anobject, readonly=True, title=None, section=None,
-                 textedit=True, duplicate=None, combolist=None, multi=False, locnlist=None):
+                 textedit=True, duplicate=None, combolist=None, multi=False, locnlist=None, default='?'):
         super(AnObject, self).__init__()
         self.anobject = anobject
         self.readonly = readonly
@@ -70,6 +70,7 @@ class AnObject(QDialog):
         self.combolist = combolist
         self.locnlist = locnlist
         self.multi = multi
+        self.default = default
         dialog.setObjectName('Dialog')
         self.initUI()
 
@@ -375,9 +376,14 @@ class AnObject(QDialog):
         if selected is None:
             return
         if len(selected) == 0:
-            txt = '?'
+            txt = self.default
             self.chosen = [txt]
         else:
+            if len(selected) > 1:
+                try:
+                    del selected[selected.index(self.default)]
+                except:
+                    pass
             self.chosen = selected
             txt = ''
             for valu in self.chosen:

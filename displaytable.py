@@ -593,7 +593,10 @@ class Table(QDialog):
             for rw in range(self.table.rowCount()):
                 for cl in range(self.table.columnCount()):
                     if self.table.item(rw, cl) is not None:
-                        valu = str(self.table.item(rw, cl).text())
+                        try:
+                            valu = self.table.cellWidget(rw, cl).toPlainText()
+                        except:
+                            valu = str(self.table.item(rw, cl).text())
                         if hdr_types[cl] == 'int':
                             try:
                                 val1 = str(self.table.item(rw, cl).text()).strip()
