@@ -1077,7 +1077,8 @@ class TabDialog(QMainWindow):
                     if item[0] != '':
                         webbrowser.open_new(item[0])
             return
-        folder = item[0].replace(self.translate_user, getUser())
+        if self.translate_user != '':
+            folder = item[0].replace(self.translate_user, getUser())
         if folder[:7] == 'file://':
             folder = folder[7:]
         if os.path.exists(folder + item[1]):
