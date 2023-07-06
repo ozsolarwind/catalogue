@@ -490,7 +490,7 @@ class selectMulti(QDialog):
             h = self.sizeHint().height() + j
             if h > h1:
                 h = h1
-            self.resize(self.sizeHint().width(), h)
+            self.resize(int(self.sizeHint().width()), int(h))
         self.setWindowTitle('Choose ' + multi + ' values')
         QShortcut(QKeySequence('q'), self, self.quitClicked)
       #  self.setWindowFlags(Qt.WindowStaysOnTopHint)
