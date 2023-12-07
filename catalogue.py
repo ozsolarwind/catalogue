@@ -648,7 +648,8 @@ class TabDialog(QMainWindow):
         properties['Location'] = folder
         properties['Acquired'] = time.strftime('%Y-%m-%d', time.localtime(stat.st_mtime))
         if new_file[-4:].lower() == '.pdf':
-            properties = getPDFInfo(new_file, properties=properties, decrypt=self.pdf_decrypt)
+            properties = getPDFInfo(new_file, properties=properties, decrypt=self.pdf_decrypt,
+                                    translate_user=self.translate_user)
         self.addItem(properties=properties)
 
     def addFiles(self):
@@ -714,7 +715,8 @@ class TabDialog(QMainWindow):
             properties['Acquired'] = time.strftime('%Y-%m-%d', time.localtime(stat.st_mtime))
             if item[1][-4:].lower() == '.pdf':
                 properties = getPDFInfo(item[0] + item[1], properties=properties,
-                             decrypt=self.pdf_decrypt)
+                                        decrypt=self.pdf_decrypt,
+                                        translate_user=self.translate_user)
             self.addItem(properties=properties)
         return
 

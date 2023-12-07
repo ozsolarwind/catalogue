@@ -28,7 +28,7 @@ import sqlite3
 from sqlite3 import Error
 import sys
 import tempfile
-from PyPDF2 import PdfFileReader
+import PyPDF2
 if sys.platform == 'win32' or sys.platform == 'cygwin':
     from win32api import GetFileVersionInfo, LOWORD, HIWORD
 import pyexcel as pxl
@@ -401,7 +401,7 @@ def getUser():
     else:
         return os.environ.get("USERNAME")
 
-def getPDFInfo(filename, properties=None, decrypt=None):
+def getPDFInfo(filename, properties=None, decrypt=None, translate_user='$USER$'):
     if filename is None:
         return
     if properties is None:
@@ -414,9 +414,14 @@ def getPDFInfo(filename, properties=None, decrypt=None):
     infos['/ModDate'] = columns.index('Date')
     infos['/Keywords'] = columns.index('Keyword')
     infos['/Publisher'] = columns.index('Publisher')
+    company = ''
+    try:
+        infos['/Company'] = columns.index('Publisher')
+    except:
+        pass
     infos['/Subject'] = columns.index('Subject')
     try:
-        pdf_toread = PdfFileReader(open(filename, 'rb'))
+        pdf_toread = PyPDF2.PdfFileReader(open(filename.replace(translate_user, getUser()), 'rb'))
     except:
         return properties
     # from https://stackoverflow.com/questions/26242952/pypdf-2-decrypt-not-working
@@ -434,7 +439,7 @@ def getPDFInfo(filename, properties=None, decrypt=None):
                            '; rm ' + tfile)
                 try:
                     os.system(command)
-                    pdf_toread = PdfFileReader(open(tfile2, 'rb'))
+                    pdf_toread = PyPDF2.PdfFileReader(open(tfile2, 'rb'))
                     os.remove(tfile2)
                 except:
                     return properties
@@ -446,12 +451,24 @@ def getPDFInfo(filename, properties=None, decrypt=None):
         pdf_info = None
     if pdf_info is not None:
         for key, value in pdf_info.items():
+            if isinstance(value, PyPDF2.generic.IndirectObject):
+                value = pdf_toread.documentInfo[key]
             if key in infos.keys():
                  if key == '/ModDate':
                      try:
                          if value[:2] == 'D:':
                              properties[columns[infos[key]]] = \
                                   value[2:6] + '-' + value[6:8] + '-' + value[8:10]
+                     except:
+                         pass
+                 elif key == '/Company':
+                     try:
+                         company = value.decode()
+                     except AttributeError:
+                         try:
+                             company = value
+                         except:
+                             pass
                      except:
                          pass
                  else:
@@ -478,6 +495,10 @@ def getPDFInfo(filename, properties=None, decrypt=None):
                          properties[columns[infos[key]]] = value
                      except:
                          pass
+        if 'Title' not in properties.keys() or properties['Title'].strip() == '':
+            properties['Title'] = properties['Filename']
+        if company != '' and 'Publisher' not in properties.keys():
+            properties['Publisher'] = company
     return properties
 
 def getISBNInfo(isbn, db_conn):
