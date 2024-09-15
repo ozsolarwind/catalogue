@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019 Angus King
+#  Copyright (C) 2019-2024 Angus King
 #
 #  functions.py - This file is part of catalogue.
 #
@@ -167,7 +167,7 @@ def insert_field(conn, typ, field, description):
     cur.execute(sql, (typ, field, description))
     return
 
-def create_catalogue(database, category='Category'):
+def create_catalogue(database, category='Category', item_date='Acquired'):
     sql_create_fields_table = """ CREATE TABLE IF NOT EXISTS fields (
                                         id integer PRIMARY KEY,
                                         typ text NOT NULL COLLATE NOCASE,
@@ -207,6 +207,7 @@ def create_catalogue(database, category='Category'):
         insert_field(conn, 'Meta', 'Keyword', '')
         insert_field(conn, 'Settings', 'Category Choice', 'Single')
         insert_field(conn, 'Settings', 'Category Field', category)
+        insert_field(conn, 'Settings', 'Item Date Field', item_date)
         insert_field(conn, 'Settings', 'Translate Userid', '$USER$')
         if sys.platform == 'win32' or sys.platform == 'cygwin':
             insert_field(conn, 'Settings', 'Launch File', 'start ""')

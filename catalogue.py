@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019-2023 Angus King
+#  Copyright (C) 2019-2024 Angus King
 #
 #  catalogue.py - This file is part of catalogue.
 #
@@ -89,6 +89,13 @@ class TabDialog(QMainWindow):
             if self.conn is not None:
                 self.db = self.dbs[0]
                 self.updDetails()
+        cur = self.conn.cursor()
+        cur.execute("select field from fields where typ = 'Meta' and description = 'Item Date'")
+        try:
+            self.item_date = cur.fetchone()[0].title()
+        except:
+            self.item_date = 'n/a'
+        cur.close()
         self.me = '/' + sys.argv[0][:sys.argv[0].rfind('.')]
         self.me = self.me[self.me.rfind('/') + 1:].title()
         self.setWindowTitle(self.me + ' (' + fileVersion() + ') - Simple Catalogue')
@@ -243,12 +250,13 @@ class TabDialog(QMainWindow):
         self.pagerows.setRange(1, table_rows)
         self.pagerows.setValue(table_rows)
         self.table.setRowCount(table_rows)
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(['', '', 'Title', self.category])
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(['', '', 'Title', self.category, self.item_date])
         self.table.setColumnWidth(0, 20)
         self.table.setColumnWidth(1, 0)
         self.table.setColumnWidth(2, 800)
         self.table.setColumnWidth(3, 200)
+        self.table.setColumnWidth(4, 100)
         self.table.setEditTriggers(QAbstractItemView.SelectedClicked)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
   #      self.table.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -266,7 +274,7 @@ class TabDialog(QMainWindow):
         centralWidget.setLayout(layout)
         self.metacombo.currentIndexChanged.connect(self.metaChanged)
         self.catcombo.currentIndexChanged.connect(self.catChanged)
-        size = QSize(min(screen.width() - 50, 1100), screen.height() - 50)
+        size = QSize(min(screen.width() - 50, 1200), screen.height() - 50)
         self.resize(size)
         goto_top = QShortcut(QKeySequence('Ctrl+Home'), self)
         goto_top.activated.connect(lambda: self.nextRows(top=True))
@@ -358,7 +366,7 @@ class TabDialog(QMainWindow):
         self.db = db_file
         self.updDetails()
         self.table.clear()
-        self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category])
+        self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category, self.item_date])
         self.rows = 0
         if db_file not in self.dbs:
             self.dbs.append(db_file)
@@ -402,6 +410,7 @@ class TabDialog(QMainWindow):
         self.category_multi = False
         self.url_field = ''
         self.isbn_field = ''
+        self.item_date = ''
         self.dewey_field = ''
         self.default_category = '?'
         self.expired_category = ''
@@ -427,6 +436,8 @@ class TabDialog(QMainWindow):
                     self.set_ignore_expired = True
             elif row[0] == 'ISBN Field':
                 self.isbn_field = row[1].upper()
+            elif row[0] == 'Item Date Field':
+                self.item_date = row[1]
             elif row[0] == 'Launch File':
                 self.launcher = row[1]
             elif row[0] == 'Location Choice':
@@ -480,7 +491,7 @@ class TabDialog(QMainWindow):
         row = cur.fetchone()
         cnt = 0
         while row is not None:
-            if row[0] == 'keyword':
+            if row[0] == 'Keyword':
                 cnt = self.metacombo.count()
             if row[0] != self.category:
                 self.metacombo.addItem(row[0])
@@ -969,7 +980,7 @@ class TabDialog(QMainWindow):
         self.srchmsg.setText('{:,d} items'.format(len(self.rows)))
         self.srchrng.setText('')
         self.table.clear()
-        self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category])
+        self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category, self.item_date])
         if len(self.rows) == 0:
             return
         if self.field in ['All', self.category, 'Title'] or search == '_%':
@@ -985,7 +996,7 @@ class TabDialog(QMainWindow):
     def getRows(self):
         self.table.clear()
         self.table.setRowCount(self.pagerows.value())
-        self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category])
+        self.table.setHorizontalHeaderLabels(['', self.field, 'Title', self.category, self.item_date])
         sql = "select title, filename from items where id = ?"
         sql1 = "select value from meta where item_id = ? and field = ? order by value"
         sql2 = "select " + self.field + " from items where id = ?"
@@ -1030,6 +1041,10 @@ class TabDialog(QMainWindow):
                 row = cur.fetchone()
                 if row is not None:
                     self.table.setItem(trw, 1, QTableWidgetItem(row[0]))
+            cur.execute(sql1, (self.rows[self.row + trw], self.item_date))
+            row = cur.fetchone()
+            if row is not None:
+                self.table.setItem(trw, 4, QTableWidgetItem(row[0]))
         self.srchrng.setText('{:,d} to  {:,d} of'.format(self.row + 1, self.row + 1 + trw))
         cur.close()
 

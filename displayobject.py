@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019-2023 Angus King
+#  Copyright (C) 2019-2024 Angus King
 #
 #  displayobject.py - This file is part of catalogue.
 #
@@ -299,7 +299,7 @@ class AnObject(QDialog):
                     grid.setRowStretch(grid.rowCount() - 1, rows[key][1])
                 self.edit[0].setFocusPolicy(Qt.StrongFocus)
             else:
-                print('(226) Not been here before')
+                print('(302) Not been here before')
                 self.keys = []
                 for key, value in self.anobject.items():
                     if value is None:
@@ -329,7 +329,7 @@ class AnObject(QDialog):
                     grid.addWidget(self.edit[-1], i, 1)
             self.set_stuff(grid, widths, heights, i)
         else:
-            print('(256) Not been here before')
+            print('(332) Not been here before')
             for prop in dir(self.anobject):
                 if prop[:2] != '__' and prop[-2:] != '__':
                     attr = getattr(self.anobject, prop)

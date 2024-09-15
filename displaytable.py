@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019-2020 Angus King
+#  Copyright (C) 2019-2024 Angus King
 #
 #  displaytable.py - This file is part of catalogue.
 #
@@ -389,9 +389,9 @@ class Table(QDialog):
         row = self.rows.logicalIndexAt(position)
         msgbox = QMessageBox()
         msgbox.setWindowTitle('Delete item')
-        msgbox.setText("Press Yes to delete '" + str(self.table.item(row, 0).text()) + "'")
+        msgbox.setText("Press 'Save' to add to Main List or 'Yes' to delete '" + str(self.table.item(row, 0).text()) + "'")
         msgbox.setIcon(QMessageBox.Question)
-        msgbox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msgbox.setStandardButtons(QMessageBox.Save | QMessageBox.Yes | QMessageBox.No)
         reply = msgbox.exec_()
         if reply == QMessageBox.Yes:
             for i in range(len(self.entry)):
