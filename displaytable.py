@@ -419,12 +419,15 @@ class Table(QDialog):
         except:
             pass
         dialog.exec_()
-        if dialog.getValues()[self.fields[0]] != '':
-            self.recur = True
-            self.entry.append(addproperty)
-            self.table.setRowCount(self.table.rowCount() + 1)
-            self.sort_col = 1
-            self.order(0)
+        try:
+            if dialog.getValues()[self.fields[0]] != '':
+                self.recur = True
+                self.entry.append(addproperty)
+                self.table.setRowCount(self.table.rowCount() + 1)
+                self.sort_col = 1
+                self.order(0)
+        except:
+            pass
         del dialog
         self.recur = False
 
