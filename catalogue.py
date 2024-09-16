@@ -90,11 +90,24 @@ class TabDialog(QMainWindow):
                 self.db = self.dbs[0]
                 self.updDetails()
         cur = self.conn.cursor()
-        cur.execute("select field from fields where typ = 'Meta' and description = 'Item Date'")
+        cur.execute("select description from fields where typ = 'Settings' and field = 'Item Date Field'")
         try:
             self.item_date = cur.fetchone()[0].title()
         except:
             self.item_date = 'n/a'
+        cur.execute("select description from fields where typ = 'Settings' and field = 'Item Date Field'")
+        try:
+            self.item_date = cur.fetchone()[0].title()
+        except:
+            self.item_date = 'n/a'
+        self.save_search = False
+        cur.execute("select description from fields where typ = 'Settings' and field = 'Save Search'")
+        try:
+            chk = cur.fetchone()[0]
+            if chk.lower() in ['true', 'yes', 'on']:
+                self.save_search = True
+        except:
+            pass
         cur.close()
         self.me = '/' + sys.argv[0][:sys.argv[0].rfind('.')]
         self.me = self.me[self.me.rfind('/') + 1:].title()
@@ -414,6 +427,7 @@ class TabDialog(QMainWindow):
         self.dewey_field = ''
         self.default_category = '?'
         self.expired_category = ''
+        self.save_search = False
         self.set_ignore_expired = False
         cur.execute("select field, description from fields where typ = 'Settings'")
         row = cur.fetchone()
@@ -443,6 +457,9 @@ class TabDialog(QMainWindow):
             elif row[0] == 'Location Choice':
                 if row[1].lower() == 'list':
                     self.location_list = True
+            elif row[0] == 'Save Search':
+                if row[1].lower() in ['true', 'yes', 'on']:
+                    self.save_search = True
             elif row[0] == 'Translate Userid':
                 self.translate_user = row[1]
             elif row[0] == 'URL Field':
@@ -487,15 +504,25 @@ class TabDialog(QMainWindow):
         self.metacombo.addItem('Title')
         self.metacombo.addItem('Filename')
         self.metacombo.addItem('Location')
+        cnt = 0
         cur.execute("select field from fields where typ = 'Meta' order by field")
         row = cur.fetchone()
-        cnt = 0
         while row is not None:
-            if row[0] == 'Keyword':
-                cnt = self.metacombo.count()
             if row[0] != self.category:
                 self.metacombo.addItem(row[0])
             row = cur.fetchone()
+        if self.save_search:
+            cur.execute("select description from fields where typ = 'Settings' and field = 'Search Fields'")
+            row = cur.fetchone()
+            if row is not None:
+                search_fields = row[0].split('|')
+                cnt = self.metacombo.findText(search_fields[0])
+                try:
+                    fcnt = self.filter.findText(search_fields[1])
+                    self.filter.setCurrentIndex(fcnt)
+                    self.search.setText(search_fields[2])
+                except:
+                    pass
         self.metacombo.setCurrentIndex(cnt)
         cur.close()
 
@@ -1293,7 +1320,7 @@ class TabDialog(QMainWindow):
         about = '<html>' + \
                 '<h2>Catalogue</h2>' + \
                 '<p>A simple catalogue for documents, books, whatever...</p>\n' + \
-                '<p>Copyright © 2019-2023 Angus King</p>\n' + \
+                '<p>Copyright © 2019-2024 Angus King</p>\n' + \
                 '<p>This program is free software: you can redistribute it and/or modify\n' + \
                 ' it under the terms of the GNU Affero General Public License as published\n' + \
                 ' by the Free Software Foundation, either version 3 of the License, or\n' + \
@@ -1324,6 +1351,27 @@ class TabDialog(QMainWindow):
             if self.db is not None:
                 self.dbs.insert(0, self.dbs.pop(self.dbs.index(self.db)))
             configFile(data=self.dbs)
+            if self.save_search:
+                try:
+                    search_fields = f'{self.field}|{self.filter.currentText()}|{self.search.text()}'
+                    cur = self.conn.cursor()
+                    cur.execute("select rowid from fields where typ = 'Settings' and field = 'Search Fields'")
+                    row = cur.fetchone()
+                    cur.close()
+                    if row is not None:
+                        sql = "update fields set description = ? where id = ?"
+                        updcur = self.conn.cursor()
+                        updcur.execute(sql, (search_fields, row[0]))
+                        updcur.close()
+                        self.conn.commit()
+                    else:
+                        sql = "insert into fields (typ, field, description) values (?, ?, ?)"
+                        updcur = self.conn.cursor()
+                        updcur.execute(sql, ('Settings', 'Search Fields', search_fields))
+                        updcur.close()
+                        self.conn.commit()
+                except:
+                    pass
         event.accept()
 
     def findFolder(self, itemid, folder, filename):

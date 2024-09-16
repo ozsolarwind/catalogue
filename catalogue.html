@@ -155,6 +155,14 @@ ul {
 <li><strong>Attribues &rarr; Meta</strong> Update the list of attributes (fields) available. When adding or editing an item you will be presented with a window containing all attributes to be updated</li>
 </ul>
 <p>
+<li>There a number of <strong>Settings</strong> to control aspects of the catalogue. These include:
+<p>
+<ul>
+<li>Defining an attribute (Meta field) as an <dfn>Item Date Field</dfn> which can contain a date for the item, for example, the date the item was acquired or published. You set the Value for the Setting to the desired attribute</li>
+<li>You can create a <dfn>Save Search</dfn> Setting and set it's Value to True to save search field values on exit</li>
+</ul>
+</li>
+<p>
 <li>You can load a spreadsheet or CSV file into the catalogue by choosing <strong>Catalogue &rarr; Load</strong>. The load process will create attributes (fields) identified by the spreadsheet column names. If you're loading the data into a new catalogue you can use one of the spreadsheet column names to define the category, title, folder and filename fields (catgeory and title are required)</li>
 </ul>
 <h3>Main Window</h3>
@@ -235,6 +243,8 @@ ul {
 <li><dfn>Item Date Field</dfn> - the name of a field containing a date for the item. This could be the date of the item, the date it was acquired, or any other (date) field</li>
 <li><dfn>Launch File</dfn> - if set this is the command that will be issued to open a computer file. The value for Windows is <code>start &ldquo;&rdquo;</code> and for Linux <code>/usr/bin/xdg-open/</code>. To hide the launch column you need to set this to empty or delete the entry</li>
 <li><dfn>Location Choice</dfn> - You can choose the <dfn>Location</dfn> field to be a selection list by setting this value to <dfn>list</dfn>. You can add items to the list by simply typing in the new value. The default is for a &ldquo;freeform&rdquo; field</li>
+<li><dfn>Save Search</dfn> - if set to True this will save search field settings on exit - they will be restored when you open the Catalogue</li>
+<li><dfn>Search Fields</dfn> - if <dfn>Save Search</dfn> is set to True this setting will contain the three search field values from the previous execution as a string with the three fields separated by a vertical bar character (|)</li>
 <li><dfn>Translate Userid</dfn> - if set, any (or at least the first) occurence of the current userid will be replaced by this value. This may be useful if the database is shared by several users. A suggested value is <code>$USER$</code></li>
 <li><dfn>URL Field</dfn> - Can be used to specify an Internet address (URL) field. If an item has no <dfn>Filename</dfn> value but does have a URL value a browser window will be launched to open the URL. If you add a <dfn>Meta</dfn> field called <dfn>URL</dfn> this setting will be updated to set that as a <dfn>URL Field</dfn></li>
 </ul></td>
