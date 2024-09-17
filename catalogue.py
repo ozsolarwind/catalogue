@@ -886,6 +886,9 @@ class TabDialog(QMainWindow):
                 row = cur.fetchone()
             cur.close()
             self.filter.setCurrentIndex(2) # contains
+            if self.save_search:
+                ccnt = self.catcombo.findText(self.search.text())
+                self.catcombo.setCurrentIndex(ccnt)
             self.search.setHidden(True)
             self.catcombo.setHidden(False)
         else:
@@ -893,13 +896,18 @@ class TabDialog(QMainWindow):
             self.search.setHidden(False)
 
     def catChanged(self):
-        self.search.setText(self.catcombo.currentText())
-        self.do_search()
+        if not self.save_search or self.catcombo.count() > 1:
+            self.search.setText(self.catcombo.currentText())
+            self.do_search()
 
     def do_search(self):
         # think about like options - '%S', '%S%', '%S_S%' '[a-zA-Z0-9_]%'
     #    self.wrapmsg.setText('')
         self.field = self.metacombo.currentText()
+        if self.field == self.category:
+            ccnt = self.catcombo.findText(self.search.text())
+            if ccnt < 0:
+                self.catcombo.setCurrentIndex(0)
         self.rows = []
         search = self.search.text()
         self.find_file = False
