@@ -89,26 +89,32 @@ class TabDialog(QMainWindow):
             if self.conn is not None:
                 self.db = self.dbs[0]
                 self.updDetails()
-        cur = self.conn.cursor()
-        cur.execute("select description from fields where typ = 'Settings' and field = 'Item Date Field'")
-        try:
-            self.item_date = cur.fetchone()[0].title()
-        except:
+            cur = self.conn.cursor()
+            cur.execute("select description from fields where typ = 'Settings' and field = 'Item Date Field'")
+            try:
+                self.item_date = cur.fetchone()[0].title()
+            except:
+                self.item_date = 'n/a'
+            cur.execute("select description from fields where typ = 'Settings' and field = 'Item Date Field'")
+            try:
+                self.item_date = cur.fetchone()[0].title()
+            except:
+                self.item_date = 'n/a'
+            self.save_search = False
+            cur.execute("select description from fields where typ = 'Settings' and field = 'Save Search'")
+            try:
+                chk = cur.fetchone()[0]
+                if chk.lower() in ['true', 'yes', 'on']:
+                    self.save_search = True
+            except:
+                pass
+            cur.close()
+        else:
+            self.isbn_field = ''
+            self.expired_category = ''
             self.item_date = 'n/a'
-        cur.execute("select description from fields where typ = 'Settings' and field = 'Item Date Field'")
-        try:
-            self.item_date = cur.fetchone()[0].title()
-        except:
-            self.item_date = 'n/a'
-        self.save_search = False
-        cur.execute("select description from fields where typ = 'Settings' and field = 'Save Search'")
-        try:
-            chk = cur.fetchone()[0]
-            if chk.lower() in ['true', 'yes', 'on']:
-                self.save_search = True
-        except:
-            pass
-        cur.close()
+            self.field = ''
+            self.conn = None
         self.me = '/' + sys.argv[0][:sys.argv[0].rfind('.')]
         self.me = self.me[self.me.rfind('/') + 1:].title()
         self.setWindowTitle(self.me + ' (' + fileVersion() + ') - Simple Catalogue')
@@ -298,6 +304,8 @@ class TabDialog(QMainWindow):
         if self.conn is not None:
             self.updDetails()
             self.do_search()
+        elif len(self.dbs) == 0:
+            self.wrapmsg.setText('Open, Add or Create a catalogue')
 
     def openDB(self):
         if len(self.dbs) < 1:
