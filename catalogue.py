@@ -879,7 +879,7 @@ class TabDialog(QMainWindow):
         if self.metacombo.currentText() == self.category:
             self.catcombo.clear()
             cur = self.conn.cursor()
-            cur.execute("select field from fields where typ = '" + self.category.title() + "' order by field")
+            cur.execute("select distinct field from fields where typ = '" + self.category.title() + "' order by field")
             row = cur.fetchone()
             while row is not None:
                 self.catcombo.addItem(row[0])
