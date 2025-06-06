@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019-2024 Angus King
+#  Copyright (C) 2019-2025 Angus King
 #
 #  functions.py - This file is part of catalogue.
 #
@@ -399,7 +399,7 @@ def getUser():
         return os.environ.get("USERNAME")
 
     elif sys.platform == 'linux2':   # linux
-        return pwd.getpwuid(os.geteuid()).pw_name
+        return os.getlogin()
     else:
         return os.environ.get("USERNAME")
 
@@ -507,20 +507,22 @@ def getISBNInfo(isbn, db_conn):
     def get_openlib_isbn(isbn):
         data_dict = None
         conn = http.client.HTTPConnection('openlibrary.org')
-        conn.request('GET', '/api/books?bibkeys=ISBN:' + isbn + '&jscmd=data&format=json')
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',}
+        conn.request('GET', '/api/books?bibkeys=ISBN:' + isbn + '&jscmd=data&format=json', headers=headers)
         response = conn.getresponse()
         if response.status == 200 and response.reason == 'OK':
             data_dict = json.loads(response.read())
+            if len(data_dict) == 0:
+                data_dict = None
         else:
             print(str(response.status) + ' ' + response.reason)
         conn.close()
-        if len(data_dict) == 0:
-            return None
         return data_dict
 
     def get_google_isbn(isbn):
         url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
-        response = requests.get(url)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',}
+        response = requests.get(url, headers=headers)
         if response.status_code == 200 and response.reason == 'OK':
             data_dict = response.json()
             if data_dict['totalItems'] > 0:
@@ -592,17 +594,14 @@ def getISBNInfo(isbn, db_conn):
                         properties['Notes'] = properties['Notes'] + '\n' + by_statement
                     else:
                         properties['Notes'] = by_statement
-
             if 'Notes' in properties.keys():
-                try:
-                    properties['Notes'] = properties['Notes'] + '\n(info derived from openlibrary.org)'
-                except:
-                    properties['Notes'] = '(info derived from openlibrary.org)'
+                properties['Notes'] = properties['Notes'] + '\n(info derived from openlibrary.org)'
+            else:
+                properties['Notes'] = '(info derived from openlibrary.org)'
     else:
         data_dict = get_google_isbn(isbn)
         if data_dict is not None:
             for key, value in data_dict.items():
-            # deal with the keys I'm interested in
                 if key == 'title':
                     properties['Title'] = value
                 if key == 'subtitle':
@@ -619,4 +618,8 @@ def getISBNInfo(isbn, db_conn):
                     properties['Date'] = value
                 elif key == 'description':
                     properties['Notes'] = value
+            if 'Notes' in properties.keys():
+                properties['Notes'] = properties['Notes'] + f'\n(https://books.google.com/books?isbn={isbn} )'
+            else:
+                properties['Notes'] = f'(info derived from https://books.google.com/books?isbn={isbn} )'
     return properties
