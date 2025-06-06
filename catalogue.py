@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019-2024 Angus King
+#  Copyright (C) 2019-2025 Angus King
 #
 #  catalogue.py - This file is part of catalogue.
 #
@@ -22,10 +22,6 @@
 import datetime
 from functools import partial
 import os
-try:
-    import pwd
-except:
-    pass
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -85,10 +81,20 @@ class TabDialog(QMainWindow):
         self.attr_cat.setStatusTip('Edit category values')
         self.attr_cat.triggered.connect(self.editFields)
         if len(self.dbs) > 0:
-            self.conn = create_connection(self.dbs[0])
-            if self.conn is not None:
-                self.db = self.dbs[0]
-                self.updDetails()
+            print(self.dbs)
+            if len(sys.argv) > 1:
+                usr = getUser()
+                self.db = sys.argv[1].replace('$USER$', usr)
+                print(usr, self.db)
+                self.conn = create_connection(self.db)
+                print(self.conn)
+                if self.conn is not None:
+                    self.updDetails()
+            else:
+                self.conn = create_connection(self.dbs[0])
+                if self.conn is not None:
+                    self.db = self.dbs[0]
+                    self.updDetails()
             cur = self.conn.cursor()
             cur.execute("select description from fields where typ = 'Settings' and field = 'Item Date Field'")
             try:
@@ -425,7 +431,10 @@ class TabDialog(QMainWindow):
             self.cattitle.setText('<strong>' + self.db + '</strong>')
         self.category = 'Category'
         self.pdf_decrypt = 'qpdf'
-        self.launcher = ''
+        if sys.platform == 'win32' or sys.platform == 'cygwin':
+            self.launcher = 'start ""'
+        else:
+            self.launcher = '/usr/bin/xdg-open'
         self.location_list = False
         self.translate_user = '$USER$'
         self.category_multi = False
@@ -788,12 +797,7 @@ class TabDialog(QMainWindow):
             if reply != QMessageBox.Yes:
                 return
         properties = getISBNInfo(isbn, self.conn)
-        if len(properties) > 1: # got some stuff
-            try:
-                properties['Notes'] = properties['Notes'] + '\n(info derived from openlibrary.org)'
-            except:
-                properties['Notes'] = '(info derived from openlibrary.org)'
-        else:
+        if len(properties) <= 1:
             QApplication.clipboard().setText(isbn)
         self.addItem(properties=properties)
 
@@ -938,8 +942,13 @@ class TabDialog(QMainWindow):
             search = search + '%'
             where = "like ?"
         elif self.filter.currentText() == 'contains':
-            search = '%' + search + '%'
             where = "like ?"
+            if self.field == 'All' and ' or ' in search.lower():
+                search = search.lower().split(' or ')
+                for w in range(len(search)):
+                    search[w] = '%' + search[w] + '%'
+            else:
+                search = '%' + search + '%'
         else:
             return
         no_expired = []
@@ -954,12 +963,39 @@ class TabDialog(QMainWindow):
             cur.close()
         cur = self.conn.cursor()
         if self.field == 'All':
-            sql = "select (id) from items where title " + where + \
-                  " or filename " + where + \
-                  " or location " + where + \
-                  " or id in (select (item_id) from meta where value " + where + ")" + \
-                  " order by title"
-            cur.execute(sql, (search, search, search, search))
+            if isinstance(search, list):
+                clause = [' title ', ' filename ', ' location ', ' id in (select (item_id) from meta where value ']
+                sql = "select (id) from items where"
+                an_or = ''
+                for c in range(len(clause)):
+                    for w in range(len(search)):
+                        sql += an_or + clause[c] + where
+                        an_or = ' or'
+                        if c == len(clause) - 1:
+                            sql += ')'
+                sql += ' order by title'
+                srchlist = []
+                for c in range(len(clause)):
+                    for w in range(len(search)):
+                        srchlist.append(search[w])
+                try:
+                    cur.execute(sql, srchlist)
+                except:
+                    cur.close()
+                    self.wrapmsg.setText('Error with search')
+                    return
+            else:
+                sql = "select (id) from items where title " + where + \
+                      " or filename " + where + \
+                      " or location " + where + \
+                      " or id in (select (item_id) from meta where value " + where + ")" + \
+                      " order by title"
+                try:
+                    cur.execute(sql, (search, search, search, search))
+                except:
+                    cur.close()
+                    self.wrapmsg.setText('Error with search')
+                    return
         elif self.filter.currentText() == 'duplicate':
             if self.field in ['Title', 'Filename', 'Location']:
                 if search != '':
@@ -1336,7 +1372,7 @@ class TabDialog(QMainWindow):
         about = '<html>' + \
                 '<h2>Catalogue</h2>' + \
                 '<p>A simple catalogue for documents, books, whatever...</p>\n' + \
-                '<p>Copyright © 2019-2024 Angus King</p>\n' + \
+                '<p>Copyright © 2019-2025 Angus King</p>\n' + \
                 '<p>This program is free software: you can redistribute it and/or modify\n' + \
                 ' it under the terms of the GNU Affero General Public License as published\n' + \
                 ' by the Free Software Foundation, either version 3 of the License, or\n' + \
@@ -1352,7 +1388,7 @@ class TabDialog(QMainWindow):
         dialog.exec_()
 
     def showHelp(self):
-        dialog = displayobject.AnObject(QDialog(), 'catalogue.html', title='Help for ' + self.me)
+        dialog = displayobject.AnObject(QDialog(), self.mydir + 'catalogue.html', title='Help for ' + self.me)
         dialog.exec_()
 
     def header_click(self, position):

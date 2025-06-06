@@ -280,7 +280,12 @@ ul {
 <li><dfn>missing</dfn> - select items with missing values for the chosen attribute</li>
 <li><dfn>duplicate</dfn> - select items that have duplicate values. If you specify a search value duplicates must start with this value</li>
 </ul>
-<li>The third field allows you to specify a search value. If the search filter is <dfn>starts with</dfn> and the search value is empty all items with the chosen attribute will be chosen. If you're searching for <dfn>duplicate</dfn> values (for example, locations) you can precede the search value with a <dfn>%</dfn> to find the search value anywhere</li>
+<li>The third field allows you to specify a search value.
+<ul>
+<li>If the search filter is <dfn>starts with</dfn> and the search value is empty all items with the chosen attribute will be chosen</li>
+<li>If you're searching for <dfn>duplicate</dfn> values (for example, locations) you can precede the search value with a <dfn>%</dfn> to find the search value anywhere</li>
+<li>If the search field is <dfn>All</dfn> and the search filter is <dfn>contains</dfn> you can specify multiple search values by separating them by &lsquo;&nbsp;or&nbsp;&rsquo;, e.g. &lsquo;left or right&rsquo;</li>
+</ul>
 <li>If an Expired Category value is defined it is possible to exclude Expired items from the search by checking the checkbox just to the right of the buttons</li>
 <li>Pressing the Search button will initiate the search. Often pressing Enter will also initiate the search</li>
 <li>Below the search fields there are details on how many items satisfy the search and which items are being displayed in the list</li>
