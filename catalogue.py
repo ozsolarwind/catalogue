@@ -81,13 +81,13 @@ class TabDialog(QMainWindow):
         self.attr_cat.setStatusTip('Edit category values')
         self.attr_cat.triggered.connect(self.editFields)
         if len(self.dbs) > 0:
-            print(self.dbs)
+        #    print(self.dbs)
             if len(sys.argv) > 1:
                 usr = getUser()
                 self.db = sys.argv[1].replace('$USER$', usr)
-                print(usr, self.db)
+         #       print(usr, self.db)
                 self.conn = create_connection(self.db)
-                print(self.conn)
+          #      print(self.conn)
                 if self.conn is not None:
                     self.updDetails()
             else:
