@@ -24,6 +24,7 @@ from datetime import datetime
 import json
 import http.client
 import os
+import requests
 import sqlite3
 from sqlite3 import Error
 import sys
@@ -503,6 +504,33 @@ def getPDFInfo(filename, properties=None, decrypt=None, translate_user='$USER$')
     return properties
 
 def getISBNInfo(isbn, db_conn):
+    def get_openlib_isbn(isbn):
+        data_dict = None
+        conn = http.client.HTTPConnection('openlibrary.org')
+        conn.request('GET', '/api/books?bibkeys=ISBN:' + isbn + '&jscmd=data&format=json')
+        response = conn.getresponse()
+        if response.status == 200 and response.reason == 'OK':
+            data_dict = json.loads(response.read())
+        else:
+            print(str(response.status) + ' ' + response.reason)
+        conn.close()
+        if len(data_dict) == 0:
+            return None
+        return data_dict
+
+    def get_google_isbn(isbn):
+        url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+        response = requests.get(url)
+        if response.status_code == 200 and response.reason == 'OK':
+            data_dict = response.json()
+            if data_dict['totalItems'] > 0:
+                data_dict = data_dict['items'][0]['volumeInfo']
+                return data_dict
+            else:
+                return None
+        else:
+            return None
+
     cur = db_conn.cursor()
     cur.execute("select description from fields where typ = 'Settings' and field = 'ISBN Field'")
     try:
@@ -516,11 +544,8 @@ def getISBNInfo(isbn, db_conn):
         dewey_field = 'Dewey Decimal'
     cur.close()
     properties = {isbn_field: isbn}
-    conn = http.client.HTTPConnection('openlibrary.org')
-    conn.request('GET', '/api/books?bibkeys=ISBN:' + isbn + '&jscmd=data&format=json')
-    response = conn.getresponse()
-    if response.status == 200 and response.reason == 'OK':
-        data_dict = json.loads(response.read())
+    data_dict = get_openlib_isbn(isbn)
+    if data_dict is not None:
         for isbn, data in data_dict.items():
             by_statement = ''
             for key, value in data.items():
@@ -567,7 +592,31 @@ def getISBNInfo(isbn, db_conn):
                         properties['Notes'] = properties['Notes'] + '\n' + by_statement
                     else:
                         properties['Notes'] = by_statement
+
+            if 'Notes' in properties.keys():
+                try:
+                    properties['Notes'] = properties['Notes'] + '\n(info derived from openlibrary.org)'
+                except:
+                    properties['Notes'] = '(info derived from openlibrary.org)'
     else:
-        print(str(response.status) + ' ' + response.reason)
-    conn.close()
+        data_dict = get_google_isbn(isbn)
+        if data_dict is not None:
+            for key, value in data_dict.items():
+            # deal with the keys I'm interested in
+                if key == 'title':
+                    properties['Title'] = value
+                if key == 'subtitle':
+                    properties['Title'] += f'. {value}'
+                elif key == 'authors':
+                    properties['Author'] = ', '.join(value)
+                elif key == 'industryIdentifiers':
+                    for ids in value:
+                        if ids['type'] == 'ISBN_13':
+                            properties[isbn_field] = ids['identifier']
+                elif key == 'publisher':
+                    properties['Publisher'] = value
+                elif key == 'publishedDate':
+                    properties['Date'] = value
+                elif key == 'description':
+                    properties['Notes'] = value
     return properties
