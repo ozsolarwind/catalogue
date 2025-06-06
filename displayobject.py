@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-#  Copyright (C) 2019-2024 Angus King
+#  Copyright (C) 2019-2025 Angus King
 #
 #  displayobject.py - This file is part of catalogue.
 #
@@ -37,10 +37,12 @@ class GrowingTextEdit(QPlainTextEdit):
 
         self.heightMin = 0
         self.heightMax = 65000
+        self.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+        self.setWordWrapMode(QTextOption.WordWrap)
 
     def sizeChange(self):
         docHeight = int(self.document().size().height())
-    #    print('(27)', self.document().size().height(), self.document().size().width())
+    #    print('(45)', self.document().size().height(), self.document().size().width())
         if self.heightMin <= docHeight <= self.heightMax:
             self.setMinimumHeight(docHeight)
 
@@ -49,7 +51,7 @@ class AnObject(QDialog):
     procStart = pyqtSignal(str)
 
     def resizeEvent(self, event):
-   #     print('(36) resize (%d x %d)' % (event.size().width(), event.size().height()))
+   #     print('(54) resize (%d x %d)' % (event.size().width(), event.size().height()))
         QWidget.resizeEvent(self, event)
         w = event.size().width()
         h = event.size().height()
@@ -154,6 +156,11 @@ class AnObject(QDialog):
                 if self.anobject[-5:].lower() == '.html' or \
                     self.anobject[-4:].lower() == '.htm' or \
                     html[:5] == '<html':
+                    i = self.anobject.rfind('/')
+                    if i >= 0:
+                        hisdir = self.anobject[: i + 1]
+                    else:
+                        hisdir = ''
                     try:
                         html = html.replace('[VERSION]', fileVersion())
                     except:
@@ -161,15 +168,20 @@ class AnObject(QDialog):
                     if self.section is not None:
                         line = html.split('\n')
                         html = ''
-                        for i in range(len(line)):
-                            html += line[i] + '\n'
-                            if line[i].strip() == '<body>':
+                        for i1 in range(len(line)):
+                            html += line[i1] + '\n'
+                            if line[i1].strip() == '<body>':
                                break
-                        for i in range(i, len(line)):
+                        if hisdir != '':
+                            for i in range(i1, len(line)):
+                                j = line[i].find('<img src="')
+                                if j >= 0 and line[i][j + 10] != '/':
+                                    line[i] = line[i][:j + 10] + hisdir + line[i][j + 10:]
+                        for i in range(i1, len(line)):
                             if line[i][:2] == '<h':
                                 if line[i].find('id="' + self.section + '"') > 0:
                                     break
-                        for i in range(i, len(line)):
+                        for i in range(i1, len(line)):
                             if line[i].find('Back to top<') > 0:
                                 break
                             j = line[i].find(' (see <a href=')
@@ -177,10 +189,18 @@ class AnObject(QDialog):
                                 k = line[i].find('</a>)', j)
                                 line[i] = line[i][:j] + line[i][k + 5:]
                             html += line[i] + '\n'
-                        for i in range(i, len(line)):
+                        for i in range(i1, len(line)):
                             if line[i].strip() == '</body>':
                                 break
-                        for i in range(i, len(line)):
+                        for i in range(i1, len(line)):
+                            html += line[i] + '\n'
+                    elif hisdir != '':
+                        line = html.split('\n')
+                        html = ''
+                        for i in range(len(line)):
+                            j = line[i].find('<img src="')
+                            if j >= 0 and line[i][j + 10] != '/':
+                                line[i] = line[i][:j + 10] + hisdir + line[i][j + 10:]
                             html += line[i] + '\n'
                     self.web.setHtml(html)
                 else:
@@ -191,7 +211,7 @@ class AnObject(QDialog):
                     self.anobject = self.anobject.replace('[VERSION]', fileVersion())
                     self.web.setHtml(self.anobject)
                 else:
-                    self.web.setPlainText(self.anobject)
+                    self.web.setPlainText(self.anobject + '\n' + os.curdir + '\n' + os.getcwd() + '\n' + os.path.dirname(os.path.realpath(__name__)))
             metrics.append(self.web.fontMetrics())
             try:
                 widths[0] = metrics[0].boundingRect(self.web.text()).width()
@@ -216,29 +236,39 @@ class AnObject(QDialog):
             self.set_stuff(grid, widths, heights, i)
         elif isinstance(self.anobject, dict):
             if self.textedit: # probably only this for catalogue app
+                screen = QDesktopWidget().availableGeometry()
                 self.keys = []
                 metrics = [QLabel('text').fontMetrics(), GrowingTextEdit('text').fontMetrics()]
                 rows = {}
                 heights = 18
+                for key in self.anobject.keys():
+                    widths[0] = max(widths[0], metrics[0].boundingRect(key).width())
+                max_width_1 = int(screen.width() * .85 - widths[0])
+                widths[1] = 1
                 for key, value in self.anobject.items():
                     if value is None:
                         value = ''
-                    widths[0] = max(widths[0], metrics[0].boundingRect(key).width())
                     try:
-                        bits = value.split('\n')
-                        for lin in bits:
-                            widths[1] = max(widths[1], metrics[1].boundingRect(lin).width())
                         if self.combolist is not None and key == self.combolist[0]:
                             max_val = ''
                             for val in self.combolist[1]:
                                 if (len(val) + 4) > len(max_val):
                                     max_val = val + 'xxxx'
                             widths[1] = max(widths[1], metrics[1].boundingRect(max_val).width())
-                        rows[key] = [max(metrics[0].boundingRect(key).height(), metrics[1].boundingRect(value).height()),
-                                     len(bits)]
-                        heights = max(heights, rows[key][0])
+                            rows[key] = [1, metrics[0].boundingRect(key).height()]
+                        else:
+                            bits = value.split('\n')
+                            for lin in bits:
+                                widths[1] = max(widths[1], metrics[1].boundingRect(lin).width())
+                            if widths[1] > max_width_1:
+                                hght = int(widths[1] / max_width_1) + 1
+                                widths[1] = max_width_1
+                                height = int((hght + .3) * heights)
+                            else:
+                                height = heights * len(bits)
+                            rows[key] = [1, max(metrics[0].boundingRect(key).height(), height, len(bits))]
                     except:
-                        rows[key] = [metrics[0].boundingRect(key).height(), 1]
+                        rows[key] = [1, metrics[0].boundingRect(key).height()]
                 for key, value in self.anobject.items():
                     if value is None:
                         value = ''
@@ -247,7 +277,7 @@ class AnObject(QDialog):
                     self.keys.append(key)
                     if self.duplicate is not None and len(self.keys) == 1:
                         self.edit.append(QLineEdit())
-                        self.edit[-1].resize(widths[1], rows[key][0])
+                        self.edit[-1].resize(widths[1], rows[key][1])
                         self.edit[-1].setText(value)
                     else:
                         if self.combolist is not None and key == self.combolist[0]:
@@ -288,18 +318,18 @@ class AnObject(QDialog):
                             else:
         #                    self.edit.append(QTextEdit())
                                 self.edit.append(GrowingTextEdit())
-                                self.edit[-1].resize(widths[1], rows[key][0])
+                                self.edit[-1].resize(widths[1], rows[key][1])
                                 self.edit[-1].setPlainText(value)
                     if self.readonly:
                         self.edit[-1].setReadOnly(True)
                     i += 1
                     grid.addWidget(label[-1], i + 1, 0)
                     grid.addWidget(self.edit[-1], i + 1, 1)
-                    grid.setRowMinimumHeight(grid.rowCount() - 1, rows[key][0])
-                    grid.setRowStretch(grid.rowCount() - 1, rows[key][1])
+                    grid.setRowStretch(grid.rowCount() - 1, rows[key][0])
+                    grid.setRowMinimumHeight(grid.rowCount() - 1, rows[key][1])
                 self.edit[0].setFocusPolicy(Qt.StrongFocus)
             else:
-                print('(302) Not been here before')
+                print('(332) Not been here before')
                 self.keys = []
                 for key, value in self.anobject.items():
                     if value is None:
@@ -329,7 +359,7 @@ class AnObject(QDialog):
                     grid.addWidget(self.edit[-1], i, 1)
             self.set_stuff(grid, widths, heights, i)
         else:
-            print('(332) Not been here before')
+            print('(362) Not been here before')
             for prop in dir(self.anobject):
                 if prop[:2] != '__' and prop[-2:] != '__':
                     attr = getattr(self.anobject, prop)
