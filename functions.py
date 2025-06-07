@@ -598,6 +598,7 @@ def getISBNInfo(isbn, db_conn):
                 properties['Notes'] = properties['Notes'] + '\n(info derived from openlibrary.org)'
             else:
                 properties['Notes'] = '(info derived from openlibrary.org)'
+            properties['URL'] = f'https://openlibrary.org/search?isbn={isbn}'
     else:
         data_dict = get_google_isbn(isbn)
         if data_dict is not None:
@@ -622,4 +623,5 @@ def getISBNInfo(isbn, db_conn):
                 properties['Notes'] = properties['Notes'] + f'\n(https://books.google.com/books?isbn={isbn} )'
             else:
                 properties['Notes'] = f'(info derived from https://books.google.com/books?isbn={isbn} )'
+            properties['URL'] = f'https://books.google.com/books?isbn={isbn}'
     return properties
